@@ -1,0 +1,79 @@
+:root {
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text: #212529;
+    --text-muted: #6c757d;
+    --primary: #4361ee;
+    --primary-light: rgba(67, 97, 238, 0.1);
+    --accent: #ff9f1c;
+    --success: #2ec4b6;
+    --border: #dee2e6;
+    --shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] {
+    --bg: #121212;
+    --card-bg: #1e1e1e;
+    --text: #e9ecef;
+    --text-muted: #adb5bd;
+    --primary: #4cc9f0;
+    --border: #333333;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; line-height: 1.6; }
+
+.container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 2rem; }
+.card { background: var(--card-bg); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); box-shadow: var(--shadow); }
+
+/* Navbar */
+.navbar { background: var(--card-bg); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+.logo { font-weight: 800; font-size: 1.4rem; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+.year-selector-container { display: flex; align-items: center; gap: 0.5rem; }
+select#yearPicker { padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid var(--primary); background: var(--card-bg); color: var(--text); font-weight: bold; cursor: pointer; }
+
+/* Month Grid */
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 1rem; }
+.month-box { padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; font-size: 0.85rem; font-weight: 600; }
+.month-box:hover { border-color: var(--primary); transform: translateY(-2px); }
+.month-box.is-selected { background: var(--primary); color: white; border-color: var(--primary); }
+.month-box.has-data { border-bottom: 3px solid var(--success); }
+.month-box.extra { background: var(--primary-light); color: var(--primary); border-style: dashed; }
+.month-box.is-current-glob { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Input Section */
+.input-section { text-align: center; max-width: 600px; margin: 0 auto; width: 100%; }
+.input-container { display: flex; align-items: center; justify-content: center; margin: 1.5rem 0; font-size: 2.5rem; }
+#salaryInput { width: 250px; border: none; border-bottom: 3px solid var(--primary); background: transparent; color: var(--text); text-align: center; font-weight: 700; outline: none; }
+.form-actions { display: flex; justify-content: space-between; gap: 1rem; }
+.btn { padding: 0.8rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+.btn-primary { background: var(--primary); color: white; flex-grow: 2; }
+.btn-nav { background: var(--border); color: var(--text); }
+
+/* KPI Grid */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+.kpi-card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
+.kpi-card small { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; font-weight: 700; }
+.kpi-card div { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-top: 0.5rem; }
+
+/* Charts - FIX PER RENDERING INFINITO */
+.charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
+.chart-card { min-height: 400px; height: 400px; position: relative; } /* Altezza esplicita obbligatoria */
+.chart-wrapper { position: relative; height: 320px; width: 100%; }
+
+/* Table */
+.table-wrapper { overflow-x: auto; margin-top: 1rem; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 1rem; border-bottom: 1px solid var(--border); }
+
+/* Utility */
+.icon-btn { background: none; border: 1px solid var(--border); padding: 0.6rem; border-radius: 8px; color: var(--text); cursor: pointer; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
+.toast.show { opacity: 1; bottom: 40px; }
+
+@media (max-width: 850px) {
+    .month-grid { grid-template-columns: repeat(4, 1fr); }
+    .charts-container { grid-template-columns: 1fr; }
+    .chart-card { height: 350px; }
+}
