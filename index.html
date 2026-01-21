@@ -3,103 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salary Dashboard 2015-2060</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Gestione Stipendi</title>
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <nav class="navbar">
-        <div class="logo">
-            <i class="fa-solid fa-chart-line"></i> <span>SalaryDash</span>
-        </div>
+<div class="navbar">
+    <div class="logo">
+        <i class="fa-solid fa-wallet"></i> MySalary
+    </div>
+    
+    <div class="year-selector-container">
+        <button id="prevYear" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
+        <select id="yearPicker"></select>
+        <button id="nextYear" class="icon-btn"><i class="fa-solid fa-chevron-right"></i></button>
         
-        <div class="year-selector-container">
-            <button id="prevYear" class="nav-btn"><i class="fa-solid fa-chevron-left"></i></button>
-            <div class="select-wrapper">
-                <select id="yearPicker"></select>
-            </div>
-            <button id="nextYear" class="nav-btn"><i class="fa-solid fa-chevron-right"></i></button>
+        <button id="themeToggle" class="icon-btn" style="margin-left: 10px;">
+            <i class="fa-solid fa-moon"></i>
+        </button>
+        
+        <button id="exportBtn" class="icon-btn" title="Esporta Backup">
+            <i class="fa-solid fa-download"></i>
+        </button>
+        
+        <label for="importFile" class="icon-btn" title="Importa Backup" style="cursor: pointer; display: inline-block;">
+            <i class="fa-solid fa-upload"></i>
+        </label>
+        <input type="file" id="importFile" accept=".json" style="display: none;">
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Sezione Mesi -->
+    <div class="card">
+        <h3>Seleziona Mese</h3>
+        <div class="month-grid" id="monthGrid"></div>
+    </div>
+
+    <!-- Input e Navigazione -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button id="btnPrevMonth" class="icon-btn"><i class="fa-solid fa-arrow-left"></i> Prec</button>
+            <h2 id="formTitle" style="margin: 0;">-</h2>
+            <button id="btnNextMonth" class="icon-btn">Succ <i class="fa-solid fa-arrow-right"></i></button>
         </div>
 
-        <div class="controls">
-            <button id="themeToggle" class="icon-btn"><i class="fa-solid fa-moon"></i></button>
-            <button id="exportBtn" class="icon-btn" title="Esporta JSON"><i class="fa-solid fa-file-export"></i></button>
-            <label for="importFile" class="icon-btn" title="Importa JSON"><i class="fa-solid fa-file-import"></i></label>
-            <input type="file" id="importFile" accept=".json" style="display: none;">
-        </div>
-    </nav>
-
-    <main class="container">
-        <section class="month-section card">
-            <div class="grid-header">Seleziona Mensilità</div>
-            <div class="month-grid" id="monthGrid"></div>
-        </section>
-
-        <section class="input-section card">
-            <h2 id="formTitle">Caricamento...</h2>
+        <div class="input-section">
             <div class="input-container">
-                <span class="currency-prefix">€</span>
+                <span style="font-size: 1.5rem; margin-right: 10px; color: var(--text-muted);">€</span>
                 <input type="number" id="salaryInput" placeholder="0.00" step="0.01">
             </div>
+            
             <div class="form-actions">
-                <button id="btnPrevMonth" class="btn btn-nav"><i class="fa-solid fa-arrow-left"></i> Prec</button>
-                <button id="btnSave" class="btn btn-primary">Salva Valore</button>
-                <button id="btnNextMonth" class="btn btn-nav">Succ <i class="fa-solid fa-arrow-right"></i></button>
+                <button id="btnSave" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Salva Stipendio
+                </button>
             </div>
-            <div id="smartDiff" class="smart-diff"></div>
-        </section>
+        </div>
+    </div>
 
-        <section class="kpi-grid">
-            <div class="kpi-card">
-                <small>Totale Annuo</small>
-                <div id="kpiTotal">€ 0</div>
-            </div>
-            <div class="kpi-card">
-                <small>Media Mensile (su 12m)</small>
-                <div id="kpiAvg">€ 0</div>
-            </div>
-            <div class="kpi-card">
-                <small>Massimo Annuo</small>
-                <div id="kpiMax">€ 0</div>
-            </div>
-            <div class="kpi-card">
-                <small>Mesi Compilati</small>
-                <div id="kpiCount">0 / 14</div>
-            </div>
-        </section>
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <small>Totale Annuo</small>
+            <div id="kpiTotal">-</div>
+        </div>
+        <div class="kpi-card">
+            <small>Media Mensile</small>
+            <div id="kpiAvg">-</div>
+        </div>
+        <div class="kpi-card">
+            <small>Picco Massimo</small>
+            <div id="kpiMax">-</div>
+        </div>
+        <div class="kpi-card">
+            <small>Mesi Inseriti</small>
+            <div id="kpiCount">-</div>
+        </div>
+    </div>
 
-        <section class="charts-container">
-            <div class="chart-card card">
-                <h3>Andamento Mensile</h3>
+    <!-- Grafici -->
+    <div class="charts-container">
+        <!-- Grafico Mensile -->
+        <div class="card chart-card">
+            <h3>Andamento Mensile</h3>
+            <div class="chart-wrapper">
                 <canvas id="monthlyChart"></canvas>
             </div>
-            <div class="chart-card card">
-                <h3>Confronto Storico Totale</h3>
-                <canvas id="yearlyChart"></canvas>
+        </div>
+
+        <!-- Grafico Annuale (Scrollabile) -->
+        <div class="card chart-card">
+            <h3>Confronto Storico Totale</h3>
+            <!-- MODIFICA QUI: cambiata classe da chart-wrapper a chart-wrapper-scrollable -->
+            <div class="chart-wrapper-scrollable">
+                <div class="chart-scroll-inner">
+                    <canvas id="yearlyChart"></canvas>
+                </div>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <section class="table-section card">
-            <h3>Dettaglio Annuale</h3>
-            <div class="table-wrapper">
-                <table id="salaryTable">
-                    <thead>
-                        <tr>
-                            <th>Mese</th>
-                            <th>Importo</th>
-                            <th>Stato</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+    <!-- Tabella Riepilogo -->
+    <div class="card">
+        <h3>Dettaglio Annuale</h3>
+        <div class="table-wrapper">
+            <table id="salaryTable">
+                <thead>
+                    <tr>
+                        <th width="40%">Mese</th>
+                        <th width="40%">Importo</th>
+                        <th width="20%">Stato</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JS populate -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-    <div id="toast" class="toast">Dati salvati con successo!</div>
+</div>
 
-    <script src="script.js"></script>
+<div id="toast" class="toast">Messaggio</div>
+
+<script src="script.js"></script>
 </body>
 </html>
