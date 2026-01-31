@@ -1,7 +1,17 @@
+// ========================================
+// CONFIGURAZIONE
+// ========================================
 const CONFIG = {
     startYear: 2015,
     endYear: 2060,
     storageKey: 'salary_data_v2'
+};
+
+const GH_CONFIG = {
+    user: "Zizzo91",
+    repo: "media-stipendi",
+    file: "salary_backup.json",
+    branch: "main"
 };
 
 const MENSILITA = [
@@ -30,15 +40,53 @@ let state = {
 let mChart = null;
 let yChart = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+// ========================================
+// AVVIO APP
+// ========================================
+document.addEventListener('DOMContentLoaded', async () => {
+    checkMagicLink();
+    await loadData();
     initYearPicker();
     setInitialDate();
     setupEventListeners();
     updateUI();
 });
 
-function loadData() {
+// ========================================
+// GESTIONE TOKEN (MAGIC LINK)
+// ========================================
+function checkMagicLink() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const magicToken = urlParams.get('token');
+
+    if (magicToken) {
+        localStorage.setItem("gh_token", magicToken);
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({path: newUrl}, '', newUrl);
+        showToast("✅ Dispositivo abilitato!");
+    }
+}
+
+// ========================================
+// CARICAMENTO DATI (CLOUD + FALLBACK LOCALE)
+// ========================================
+async function loadData() {
+    try {
+        const cacheBuster = "?t=" + new Date().getTime();
+        const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
+        
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            state = await response.json();
+            localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+            console.log("✅ Dati caricati da GitHub");
+            return;
+        }
+    } catch (e) {
+        console.warn("GitHub offline, uso dati locali:", e);
+    }
+
     const saved = localStorage.getItem(CONFIG.storageKey);
     if (saved) {
         try {
@@ -49,15 +97,68 @@ function loadData() {
             console.error("Errore caricamento dati", e);
         }
     }
+
     if (state.theme === 'dark') {
         document.body.setAttribute('data-theme', 'dark');
     }
 }
 
+// ========================================
+// SALVATAGGIO DATI (LOCALE + CLOUD)
+// ========================================
 function saveData() {
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+    syncToGitHub();
 }
 
+async function syncToGitHub() {
+    const token = localStorage.getItem("gh_token");
+    
+    if (!token) {
+        console.log("Nessun token, salvataggio solo locale");
+        return;
+    }
+
+    try {
+        const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
+        
+        let sha = null;
+        try {
+            const getResp = await fetch(apiUrl, {
+                headers: { 
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json' 
+                }
+            });
+            if (getResp.ok) sha = (await getResp.json()).sha;
+        } catch (e) {}
+
+        const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+
+        const putResp = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: "Update " + new Date().toISOString().slice(0, 10),
+                content: contentBase64,
+                sha: sha
+            })
+        });
+
+        if (!putResp.ok) throw new Error(putResp.statusText);
+        console.log("✅ Salvato su GitHub");
+
+    } catch (error) {
+        console.error("Errore sincronizzazione GitHub:", error);
+    }
+}
+
+// ========================================
+// INIZIALIZZAZIONE UI
+// ========================================
 function setInitialDate() {
     if (!localStorage.getItem(CONFIG.storageKey)) {
         const now = new Date();
@@ -85,7 +186,9 @@ function updateUI() {
     updateCharts();
     document.getElementById('yearPicker').value = state.view.year;
 }
-
+// ========================================
+// RENDERING
+// ========================================
 function renderMonthGrid() {
     const grid = document.getElementById('monthGrid');
     const now = new Date();
@@ -159,9 +262,7 @@ function updateCharts() {
     const ctxY = canvasY.getContext('2d');
     const accentColor = getComputedStyle(document.body).getPropertyValue('--primary').trim();
 
-    // --- Grafico Mensile ---
     const mData = MENSILITA.map(m => state.salaries[state.view.year]?.[m.id] || 0);
-
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
         type: 'line',
@@ -183,11 +284,9 @@ function updateCharts() {
         }
     });
 
-    // --- Grafico Annuale Scrollabile (TUTTI gli anni) ---
     const years = [];
     const totals = [];
-
-    // Loop su tutti gli anni configurati
+    
     for (let y = CONFIG.startYear; y <= CONFIG.endYear; y++) {
         years.push(y);
         const yData = state.salaries[y] || {};
@@ -195,19 +294,13 @@ function updateCharts() {
         totals.push(yTot);
     }
 
-    // 1. Calcolo larghezza necessaria (es. 40px per anno)
-    const minBarWidth = 40; 
-    // Container esterno scrollabile
+    const minBarWidth = 40;
     const scrollContainer = document.querySelector('.chart-wrapper-scrollable');
-    // Container interno che contiene il canvas
     const innerContainer = document.querySelector('.chart-scroll-inner');
     
-    // La larghezza è il massimo tra la larghezza dello schermo e quella richiesta dalle barre
     const totalWidth = Math.max(years.length * minBarWidth, scrollContainer.clientWidth);
-    
-    // 2. Imposto la larghezza del contenitore INTERNO
     innerContainer.style.width = `${totalWidth}px`;
-
+    
     if (yChart) yChart.destroy();
     
     yChart = new Chart(ctxY, {
@@ -222,9 +315,7 @@ function updateCharts() {
             }]
         },
         options: {
-            // CORREZIONE FONDAMENTALE: responsive deve essere TRUE. 
-            // Il canvas si adatterà al contenitore "inner" che abbiamo appena allargato.
-            responsive: true, 
+            responsive: true,
             maintainAspectRatio: false,
             layout: {
                 padding: { top: 20, bottom: 0, left: 10, right: 10 }
@@ -238,19 +329,19 @@ function updateCharts() {
         }
     });
     
-    // Auto-scroll all'anno corrente (ritardato per rendering)
     setTimeout(() => {
         const currentYearIndex = years.indexOf(state.view.year);
         if (currentYearIndex !== -1 && scrollContainer) {
-            // Centra la vista sull'anno corrente
             const scrollPos = (currentYearIndex * minBarWidth) - (scrollContainer.clientWidth / 2) + (minBarWidth / 2);
             scrollContainer.scrollLeft = scrollPos;
         }
     }, 100);
 }
 
+// ========================================
+// EVENTI
+// ========================================
 function setupEventListeners() {
-    // --- Salvataggio Valore ---
     document.getElementById('btnSave').onclick = () => {
         const val = document.getElementById('salaryInput').value;
         
@@ -266,7 +357,6 @@ function setupEventListeners() {
         showToast('Dati salvati!');
     };
 
-    // --- Navigazione Anno ---
     document.getElementById('yearPicker').onchange = (e) => {
         state.view.year = parseInt(e.target.value);
         updateUI();
@@ -286,11 +376,9 @@ function setupEventListeners() {
         }
     };
 
-    // --- Navigazione Mese Bottoni ---
     document.getElementById('btnPrevMonth').onclick = () => moveMonth(-1);
     document.getElementById('btnNextMonth').onclick = () => moveMonth(1);
 
-    // --- Tema ---
     document.getElementById('themeToggle').onclick = () => {
         const isDark = document.body.hasAttribute('data-theme');
         if (isDark) {
@@ -301,10 +389,9 @@ function setupEventListeners() {
             state.theme = 'dark';
         }
         saveData();
-        updateCharts(); 
+        updateCharts();
     };
 
-    // --- Export JSON ---
     document.getElementById('exportBtn').onclick = () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
         const downloadAnchorNode = document.createElement('a');
@@ -315,7 +402,6 @@ function setupEventListeners() {
         downloadAnchorNode.remove();
     };
 
-    // --- Import JSON ---
     document.getElementById('importFile').onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -340,7 +426,7 @@ function setupEventListeners() {
             }
         };
         reader.readAsText(file);
-        e.target.value = ''; 
+        e.target.value = '';
     };
 }
 
