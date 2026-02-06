@@ -1,28 +1,31 @@
 :root {
-  --bg: #f8f9fa;
-  --card-bg: #ffffff;
-  --text: #212529;
-  --text-muted: #6c757d;
-  --primary: #4361ee;
-  --primary-light: rgba(67, 97, 238, 0.1);
-  --accent: #ff9f1c;
-  --success: #2ec4b6;
-  --border: #dee2e6;
-  --shadow: 0 4px 12px rgba(0,0,0,0.05);
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text: #212529;
+    --text-muted: #6c757d;
+    --primary: #4361ee;
+    --primary-light: rgba(67, 97, 238, 0.1);
+    --accent: #ff9f1c;
+    --success: #2ec4b6;
+    --danger: #ef233c; /* Nuovo colore per differenze negative */
+    --border: #dee2e6;
+    --shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
 [data-theme="dark"] {
-  --bg: #121212;
-  --card-bg: #1e1e1e;
-  --text: #e9ecef;
-  --text-muted: #adb5bd;
-  --primary: #4cc9f0;
-  --border: #333333;
-  --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    --bg: #121212;
+    --card-bg: #1e1e1e;
+    --text: #e9ecef;
+    --text-muted: #adb5bd;
+    --primary: #4cc9f0;
+    --danger: #ff5c5c;
+    --border: #333333;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); transition: 0.3s; line-height: 1.6; }
+
 .container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; display: flex; flex-direction: column; gap: 2rem; }
 .card { background: var(--card-bg); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); box-shadow: var(--shadow); }
 
@@ -56,28 +59,18 @@ select#yearPicker { padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid 
 .kpi-card small { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; font-weight: 700; }
 .kpi-card div { font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-top: 0.5rem; }
 
-/* Charts */
-.charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
-.chart-card { min-height: 400px; height: 400px; display: flex; flex-direction: column; } 
+/* Charts Layout */
+.charts-container { display: flex; flex-direction: column; gap: 2rem; width: 100%; }
+.chart-card { min-height: 400px; height: 400px; display: flex; flex-direction: column; width: 100%; }
 
-/* Grafico Mensile (statico) */
+.card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
+.compare-controls select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.9rem; cursor: pointer; }
+
 .chart-wrapper { position: relative; flex-grow: 1; min-height: 0; width: 100%; }
 
 /* --- Grafico Annuale (SCROLLABILE) --- */
-.chart-wrapper-scrollable {
-  position: relative;
-  flex-grow: 1;
-  width: 100%;
-  overflow-x: auto; /* Abilita scroll orizzontale */
-  overflow-y: hidden;
-}
-
-.chart-scroll-inner {
-  height: 100%; /* Occupa tutta l'altezza disponibile */
-  position: relative;
-  /* La larghezza (width) viene impostata via JS */
-}
-/* ------------------------------------- */
+.chart-wrapper-scrollable { position: relative; flex-grow: 1; width: 100%; overflow-x: auto; overflow-y: hidden; }
+.chart-scroll-inner { height: 100%; position: relative; }
 
 /* Table */
 .table-wrapper { overflow-x: auto; margin-top: 1rem; }
@@ -90,7 +83,6 @@ th, td { text-align: left; padding: 1rem; border-bottom: 1px solid var(--border)
 .toast.show { opacity: 1; bottom: 40px; }
 
 @media (max-width: 850px) {
-  .month-grid { grid-template-columns: repeat(4, 1fr); }
-  .charts-container { grid-template-columns: 1fr; }
-  .chart-card { height: 350px; }
+    .month-grid { grid-template-columns: repeat(4, 1fr); }
+    .chart-card { height: 350px; }
 }

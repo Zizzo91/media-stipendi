@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
+    <!-- Chart.js Plugin Datalabels (Opzionale per etichette avanzate, ma usiamo base Chart.js per leggerezza) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -92,9 +92,10 @@
         </div>
     </div>
 
-    <!-- Grafici -->
+    <!-- Grafici (Stack Verticale) -->
     <div class="charts-container">
-        <!-- Grafico Mensile -->
+        
+        <!-- 1. Grafico Mensile -->
         <div class="card chart-card">
             <h3>Andamento Mensile</h3>
             <div class="chart-wrapper">
@@ -102,14 +103,26 @@
             </div>
         </div>
 
-        <!-- Grafico Annuale (Scrollabile) -->
+        <!-- 2. Grafico Storico Totale (Spostato qui sotto richiesta) -->
         <div class="card chart-card">
             <h3>Confronto Storico Totale</h3>
-            <!-- MODIFICA QUI: cambiata classe da chart-wrapper a chart-wrapper-scrollable -->
             <div class="chart-wrapper-scrollable">
                 <div class="chart-scroll-inner">
                     <canvas id="yearlyChart"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- 3. Grafico Confronto Diretto -->
+        <div class="card chart-card">
+            <div class="card-header-flex">
+                <h3 style="margin:0">Confronto Diretto</h3>
+                <div class="compare-controls">
+                    <select id="cmpYear1"></select> <span style="font-size:0.9rem; color:var(--text-muted)">vs</span> <select id="cmpYear2"></select>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="comparisonChart"></canvas>
             </div>
         </div>
     </div>
