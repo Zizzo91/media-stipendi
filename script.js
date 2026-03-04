@@ -49,13 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadData();
     initYearSelectors();
     setInitialDate();
+
+    enhanceUI();
     setupEventListeners();
     setupCurrencyFormatter();
+
     updateUI(true);
 });
 
 // ========================================
-// GESTIONE TOKEN (MAGIC LINK)
+// GESTIONE TOKEN E UI INJECTED
 // ========================================
 function checkMagicLink() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -69,6 +72,188 @@ function checkMagicLink() {
     }
 }
 
+function getHasToken() {
+    return !!localStorage.getItem("gh_token");
+}
+
+function enhanceUI() {
+    injectEnhancementStyles();
+    injectSyncBadge();
+    injectNoteAndDeleteControls();
+    injectTableVariationColumn();
+    injectKpiIcons();
+    setSyncStatus(getHasToken() ? 'ready' : 'local');
+}
+
+function injectEnhancementStyles() {
+    if (document.getElementById('enhancements-css')) return;
+  
+    const css = `
+      .sync-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:999px;font-size:.85rem}
+      .sync-dot{width:.6rem;height:.6rem;border-radius:50%}
+      .sync-local .sync-dot{background:#adb5bd}
+      .sync-ready .sync-dot{background:var(--primary)}
+      .sync-syncing .sync-dot{background:var(--accent)}
+      .sync-synced .sync-dot{background:var(--success)}
+      .sync-error .sync-dot{background:var(--danger)}
+      .note-wrap{margin-top:.75rem;text-align:left}
+      #noteInput{width:100%;min-height:64px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--bg);color:var(--text)}
+      .btn-danger{background:var(--danger);color:#fff;flex-grow:1}
+      .btn-secondary{background:var(--border);color:var(--text);flex-grow:1}
+      .var-badge{display:inline-block;padding:.15rem .45rem;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid var(--border)}
+      .var-pos{color:var(--success)}
+      .var-neg{color:var(--danger)}
+      .var-neu{color:var(--text-muted)}
+      .kpi-icon{font-size:1.2rem;color:var(--text-muted);margin-bottom:.35rem}
+      @media (max-width: 480px){
+        .form-actions{flex-direction:column}
+      }
+    `;
+    const style = document.createElement('style');
+    style.id = 'enhancements-css';
+    style.textContent = css;
+    document.head.appendChild(style);
+}
+
+function injectSyncBadge() {
+    if (document.getElementById('syncBadge')) return;
+  
+    const container = document.querySelector('.navbar .year-selector-container');
+    if (!container) return;
+  
+    const badge = document.createElement('div');
+    badge.id = 'syncBadge';
+    badge.className = 'sync-badge sync-local';
+    badge.title = 'Stato sincronizzazione';
+  
+    const dot = document.createElement('span');
+    dot.className = 'sync-dot';
+    dot.id = 'syncDot';
+  
+    const text = document.createElement('span');
+    text.id = 'syncText';
+    text.textContent = 'Locale';
+  
+    badge.appendChild(dot);
+    badge.appendChild(text);
+    container.appendChild(badge);
+}
+
+function setSyncStatus(status, extraText = '') {
+    const badge = document.getElementById('syncBadge');
+    const text = document.getElementById('syncText');
+    if (!badge || !text) return;
+  
+    badge.classList.remove('sync-local', 'sync-ready', 'sync-syncing', 'sync-synced', 'sync-error');
+  
+    if (status === 'local') {
+      badge.classList.add('sync-local');
+      text.textContent = 'Locale';
+    } else if (status === 'ready') {
+      badge.classList.add('sync-ready');
+      text.textContent = 'Pronto';
+    } else if (status === 'syncing') {
+      badge.classList.add('sync-syncing');
+      text.textContent = 'Sync…';
+    } else if (status === 'synced') {
+      badge.classList.add('sync-synced');
+      text.textContent = extraText ? `Sync OK (${extraText})` : 'Sync OK';
+    } else if (status === 'error') {
+      badge.classList.add('sync-error');
+      text.textContent = extraText ? `Errore (${extraText})` : 'Errore';
+    }
+}
+
+function injectNoteAndDeleteControls() {
+    // textarea note
+    if (!document.getElementById('noteInput')) {
+      const inputSection = document.querySelector('.input-section');
+      if (inputSection) {
+        const wrap = document.createElement('div');
+        wrap.className = 'note-wrap';
+        wrap.innerHTML = `
+          <label for="noteInput" style="display:block;margin-bottom:.35rem;color:var(--text-muted);font-weight:700;font-size:.8rem;text-transform:uppercase">
+            Nota (opzionale)
+          </label>
+          <textarea id="noteInput" placeholder="Es. Bonus, aumento, straordinari..."></textarea>
+        `;
+        inputSection.insertBefore(wrap, document.querySelector('.form-actions'));
+      }
+    }
+  
+    // bottone cestino
+    const actions = document.querySelector('.form-actions');
+    if (actions && !document.getElementById('btnDeleteMonth')) {
+      actions.style.gap = '1rem';
+  
+      const delBtn = document.createElement('button');
+      delBtn.id = 'btnDeleteMonth';
+      delBtn.className = 'btn btn-danger';
+      delBtn.type = 'button';
+      delBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Cancella mese';
+  
+      actions.appendChild(delBtn);
+    }
+}
+
+function injectTableVariationColumn() {
+    const table = document.getElementById('salaryTable');
+    if (!table) return;
+  
+    const headRow = table.querySelector('thead tr');
+    if (headRow && !headRow.querySelector('th[data-col="var"]')) {
+      const th = document.createElement('th');
+      th.setAttribute('data-col', 'var');
+      th.textContent = 'Var %';
+      headRow.insertBefore(th, headRow.children[2] || null); 
+    }
+}
+
+function injectKpiIcons() {
+    const cards = document.querySelectorAll('.kpi-card');
+    if (!cards || !cards.length) return;
+  
+    const icons = ['fa-calendar-check', 'fa-chart-line', 'fa-trophy', 'fa-list-check'];
+    cards.forEach((card, idx) => {
+      if (card.querySelector('.kpi-icon')) return;
+      const div = document.createElement('div');
+      div.className = 'kpi-icon';
+      div.innerHTML = `<i class="fa-solid ${icons[idx] || 'fa-circle-info'}"></i>`;
+      card.insertBefore(div, card.firstChild);
+    });
+}
+
+function normalizeEntry(entry) {
+    if (entry === null || entry === undefined) return null;
+    if (typeof entry === 'number') return { amount: entry, note: '' };
+    if (typeof entry === 'object') {
+      const amount = (typeof entry.amount === 'number') ? entry.amount : (entry.amount ? parseFloat(entry.amount) : null);
+      const note = (entry.note ? String(entry.note) : '');
+      return { amount: (isNaN(amount) ? null : amount), note };
+    }
+    const n = parseFloat(entry);
+    return isNaN(n) ? null : { amount: n, note: '' };
+}
+  
+function getAmount(entry) {
+    const e = normalizeEntry(entry);
+    return e && typeof e.amount === 'number' ? e.amount : null;
+}
+
+function getNote(entry) {
+    const e = normalizeEntry(entry);
+    return e ? (e.note || '') : '';
+}
+
+function fmtPercent(p) {
+    const sign = p > 0 ? '+' : '';
+    return `${sign}${p.toFixed(1)}%`;
+}
+
+function isSmallScreen() {
+    return window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
+}
+
 // ========================================
 // CARICAMENTO DATI
 // ========================================
@@ -78,7 +263,6 @@ async function loadData() {
 
     try {
         if (token) {
-            // Se c'è il token, bypassiamo la cache usando le API di GitHub
             const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
             const apiResp = await fetch(apiUrl, {
                 headers: {
@@ -133,7 +317,9 @@ function saveData() {
 
 async function syncToGitHub() {
     const token = localStorage.getItem("gh_token");
-    if (!token) return;
+    if (!token) { setSyncStatus('local'); return; }
+
+    setSyncStatus('syncing');
 
     try {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
@@ -150,7 +336,11 @@ async function syncToGitHub() {
             body: JSON.stringify({ message: "Update " + new Date().toISOString().slice(0, 10), content: contentBase64, sha: sha })
         });
         console.log("✅ Salvato su GitHub");
-    } catch (error) { console.error("Errore Sync:", error); }
+        setSyncStatus('synced', new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+    } catch (error) { 
+        console.error("Errore Sync:", error);
+        setSyncStatus('error'); 
+    }
 }
 
 // ========================================
@@ -215,19 +405,14 @@ function setupCurrencyFormatter() {
     const hiddenInput = document.getElementById('salaryInput');
 
     displayInput.addEventListener('input', function(e) {
-        // Permette solo numeri e virgola (opzionale punto)
         let value = e.target.value.replace(/[^0-9.,]/g, '');
-        
-        // Converte eventuale punto in virgola per l'inserimento
         value = value.replace(/\./g, ',');
         
-        // Gestisce più virgole, tiene solo la prima
         const parts = value.split(',');
         if (parts.length > 2) {
             value = parts[0] + ',' + parts.slice(1).join('');
         }
         
-        // Limita a due decimali
         if (value.includes(',')) {
             const dec = value.split(',')[1];
             if (dec.length > 2) {
@@ -235,23 +420,17 @@ function setupCurrencyFormatter() {
             }
         }
 
-        // Estrae il numero pulito per il formatting
         let numForFormatting = value.replace(/,/g, '.');
         let parsed = parseFloat(numForFormatting);
 
         if (!isNaN(parsed) && value !== '') {
-            // Se c'è una virgola finale o finisce con virgola+zero, mostra il testo digitato
-            // Altrimenti formatta
             if (value.endsWith(',') || (value.includes(',') && value.endsWith('0'))) {
-                // Mantiene i punti delle migliaia ma lascia i decimali come digitati
                 const intPart = parseInt(parts[0], 10).toLocaleString('it-IT');
                 const decPart = parts.length > 1 ? ',' + parts[1] : '';
                 displayInput.value = intPart + decPart;
             } else {
-                // Formattazione completa per display (es. 2.500,50)
                 displayInput.value = parsed.toLocaleString('it-IT');
             }
-            // Aggiorna campo nascosto con valore numerico reale per il salvataggio
             hiddenInput.value = parsed;
         } else {
             displayInput.value = '';
@@ -259,7 +438,6 @@ function setupCurrencyFormatter() {
         }
     });
 
-    // Seleziona tutto il testo al click per facilitare la modifica
     displayInput.addEventListener('focus', function() {
         this.select();
     });
@@ -277,7 +455,8 @@ function renderMonthGrid() {
         div.className = 'month-box';
         if (m.extra) div.classList.add('extra');
         if (state.view.monthId === m.id) div.classList.add('is-selected');
-        if (state.salaries[state.view.year]?.[m.id]) div.classList.add('has-data');
+        
+        if (getAmount(state.salaries[state.view.year]?.[m.id]) !== null) div.classList.add('has-data');
         if (state.view.year === now.getFullYear() && (now.getMonth() + 1).toString().padStart(2, '0') === m.id) div.classList.add('is-current-glob');
         
         div.textContent = m.name;
@@ -289,45 +468,79 @@ function renderMonthGrid() {
 function renderForm() {
     const mInfo = MENSILITA.find(m => m.id === state.view.monthId);
     document.getElementById('formTitle').textContent = `${mInfo.full} ${state.view.year}`;
-    const val = state.salaries[state.view.year]?.[state.view.monthId];
-    
-    // Aggiorna sia il display formattato che l'input nascosto
+  
+    const entry = state.salaries[state.view.year]?.[state.view.monthId];
+    const amount = getAmount(entry);
+    const note = getNote(entry);
+  
     const displayInput = document.getElementById('salaryDisplay');
     const hiddenInput = document.getElementById('salaryInput');
-    
-    if (val) {
-        hiddenInput.value = val;
-        displayInput.value = parseFloat(val).toLocaleString('it-IT');
+    const noteInput = document.getElementById('noteInput');
+  
+    if (amount !== null) {
+      hiddenInput.value = amount;
+      displayInput.value = amount.toLocaleString('it-IT', { maximumFractionDigits: 2 });
     } else {
-        hiddenInput.value = '';
-        displayInput.value = '';
+      hiddenInput.value = '';
+      displayInput.value = '';
     }
+  
+    if (noteInput) noteInput.value = note || '';
 }
 
 function renderKPIs() {
     const yearData = state.salaries[state.view.year] || {};
-    const values = Object.values(yearData).map(v => parseFloat(v));
+    const values = Object.values(yearData)
+      .map(e => getAmount(e))
+      .filter(v => typeof v === 'number');
+  
     const total = values.reduce((a, b) => a + b, 0);
     const avg = values.length ? (total / 12) : 0;
-    
-    document.getElementById('kpiTotal').textContent = total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-    document.getElementById('kpiAvg').textContent = avg.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-    document.getElementById('kpiMax').textContent = values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
+  
+    document.getElementById('kpiTotal').textContent =
+      total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+  
+    document.getElementById('kpiAvg').textContent =
+      avg.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+  
+    document.getElementById('kpiMax').textContent =
+      values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
+  
     document.getElementById('kpiCount').textContent = `${values.length} / 14`;
 }
 
 function renderTable() {
     const tbody = document.querySelector('#salaryTable tbody');
     tbody.innerHTML = '';
+  
+    let prevAmount = null;
+  
     MENSILITA.forEach(m => {
-        const val = state.salaries[state.view.year]?.[m.id];
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${m.full}</td>
-            <td>${val ? parseFloat(val).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}</td>
-            <td>${val ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
-        `;
-        tbody.appendChild(tr);
+      const entry = state.salaries[state.view.year]?.[m.id];
+      const amount = getAmount(entry);
+      const note = getNote(entry);
+  
+      let varHtml = '<span class="var-badge var-neu">-</span>';
+      if (!m.extra && amount !== null && prevAmount !== null && prevAmount !== 0) {
+        const pct = ((amount - prevAmount) / prevAmount) * 100;
+        const cls = pct > 0 ? 'var-pos' : (pct < 0 ? 'var-neg' : 'var-neu');
+        varHtml = `<span class="var-badge ${cls}">${fmtPercent(pct)}</span>`;
+      }
+  
+      if (!m.extra && amount !== null) prevAmount = amount;
+  
+      const noteIcon = note
+        ? `<i class="fa-solid fa-note-sticky" title="${note.replaceAll('"','&quot;')}" style="margin-left:8px;color:var(--accent)"></i>`
+        : '';
+  
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${m.full}</td>
+        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteIcon}</td>
+        <td>${varHtml}</td>
+        <td>${amount !== null ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
+      `;
+      tbody.appendChild(tr);
     });
 }
 
@@ -340,7 +553,10 @@ function updateCharts() {
 
     // --- 1. Monthly Chart ---
     const ctxM = document.getElementById('monthlyChart').getContext('2d');
-    const mData = MENSILITA.map(m => state.salaries[state.view.year]?.[m.id] || 0);
+    const mData = MENSILITA.map(m => {
+        const a = getAmount(state.salaries[state.view.year]?.[m.id]);
+        return a !== null ? a : null;
+    });
     
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
@@ -360,6 +576,7 @@ function updateCharts() {
             responsive: true,
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
+            spanGaps: false,
             scales: { y: { beginAtZero: true } }
         }
     });
@@ -368,29 +585,31 @@ function updateCharts() {
     const canvasY = document.getElementById('yearlyChart'); 
     const ctxY = canvasY.getContext('2d');
     
-    // Trova l'ultimo anno che ha dati validi per tagliare il grafico
     let lastYearWithData = CONFIG.startYear;
     Object.keys(state.salaries).forEach(y => {
         if (Object.keys(state.salaries[y]).length > 0) {
             lastYearWithData = Math.max(lastYearWithData, parseInt(y));
         }
     });
-    // Mostra almeno fino all'anno corrente selezionato o all'anno reale
     const maxYearToShow = Math.max(lastYearWithData, state.view.year, new Date().getFullYear());
 
     const years = [];
     const totals = [];
     
-    // Calcola il totale dell'anno CORRENTE di visualizzazione (per il confronto)
-    const currentViewYearTotal = Object.values(state.salaries[state.view.year] || {}).reduce((a, b) => a + parseFloat(b), 0);
+    const currentViewYearTotal = Object.values(state.salaries[state.view.year] || {})
+        .map(e => getAmount(e))
+        .filter(v => typeof v === 'number')
+        .reduce((a, b) => a + b, 0);
 
     for (let y = CONFIG.startYear; y <= maxYearToShow; y++) {
         years.push(y);
-        const yTot = Object.values(state.salaries[y] || {}).reduce((a, b) => a + parseFloat(b), 0);
+        const yTot = Object.values(state.salaries[y] || {})
+            .map(e => getAmount(e))
+            .filter(v => typeof v === 'number')
+            .reduce((a, b) => a + b, 0);
         totals.push(yTot);
     }
 
-    // Ridimensiona container
     const minBarWidth = 50;
     const scrollContainer = document.querySelector('.chart-wrapper-scrollable');
     const innerContainer = document.querySelector('.chart-scroll-inner');
@@ -424,7 +643,6 @@ function updateCharts() {
                             return `Totale: ${label}`;
                         },
                         afterLabel: function(context) {
-                            // Calcola differenza rispetto all'anno selezionato (state.view.year)
                             const year = context.label;
                             if (parseInt(year) === state.view.year) return "Anno Selezionato";
                             
@@ -439,7 +657,6 @@ function updateCharts() {
         }
     });
     
-    // Scroll all'anno corrente
     setTimeout(() => {
         const idx = years.indexOf(state.view.year);
         if (idx !== -1 && scrollContainer) {
@@ -453,24 +670,24 @@ function updateCharts() {
         const y1 = parseInt(document.getElementById('cmpYear1').value) || state.view.year;
         const y2 = parseInt(document.getElementById('cmpYear2').value) || (state.view.year - 1);
 
-        const d1 = MENSILITA.map(m => state.salaries[y1]?.[m.id] || 0);
-        const d2 = MENSILITA.map(m => state.salaries[y2]?.[m.id] || 0);
+        const d1 = MENSILITA.map(m => getAmount(state.salaries[y1]?.[m.id]) || 0);
+        const d2 = MENSILITA.map(m => getAmount(state.salaries[y2]?.[m.id]) || 0);
         
-        // Calcola labels con delta
+        const showDeltaOnLabels = !isSmallScreen();
+        
         const labelsWithDelta = MENSILITA.map((m, i) => {
             const v1 = d1[i];
             const v2 = d2[i];
-            // Mostra differenza solo se entrambi hanno dati o se almeno uno ne ha
+            if (!showDeltaOnLabels) return m.name;
             if (v1 === 0 && v2 === 0) return m.name; 
             
             const diff = v1 - v2;
             const sign = diff > 0 ? '+' : '';
-            // Formattazione compatta per l'asse X (es. +200)
             const diffFmt = Math.abs(diff) >= 1000 
                 ? (diff/1000).toFixed(1) + 'k' 
                 : Math.round(diff);
             
-            return [m.name, `(${sign}${diffFmt})`]; // Array crea label su due righe
+            return [m.name, `(${sign}${diffFmt})`]; 
         });
 
         if (cChart) cChart.destroy();
@@ -525,9 +742,8 @@ function updateCharts() {
                                 return l;
                             },
                             afterBody: (tooltipItems) => {
-                                // Calcola il delta esatto nel tooltip per precisione
-                                const v1 = tooltipItems[0].raw; // dataset 0 è sempre y1
-                                const v2 = tooltipItems[1] ? tooltipItems[1].raw : 0; // dataset 1 è y2
+                                const v1 = tooltipItems[0].raw; 
+                                const v2 = tooltipItems[1] ? tooltipItems[1].raw : 0; 
                                 const diff = v1 - v2;
                                 return `\nDifferenza (${y1} - ${y2}):\n` + new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', signDisplay: 'always' }).format(diff);
                             }
@@ -540,20 +756,43 @@ function updateCharts() {
 }
 
 // ========================================
-// EVENTI
+// EVENTI E SALVATAGGIO
 // ========================================
 function setupEventListeners() {
     document.getElementById('btnSave').onclick = () => {
-        const val = document.getElementById('salaryInput').value;
+        const amountStr = document.getElementById('salaryInput').value;
+        const note = (document.getElementById('noteInput')?.value || '').trim();
+      
         if (!state.salaries[state.view.year]) state.salaries[state.view.year] = {};
-        
-        if (val === '' || val === null) delete state.salaries[state.view.year][state.view.monthId];
-        else state.salaries[state.view.year][state.view.monthId] = parseFloat(val);
-        
+      
+        if (amountStr === '' || amountStr === null) {
+          delete state.salaries[state.view.year][state.view.monthId];
+        } else {
+          state.salaries[state.view.year][state.view.monthId] = {
+            amount: parseFloat(amountStr),
+            note: note
+          };
+        }
+      
         saveData();
-        updateUI(false); 
+        updateUI(false);
         showToast('Dati salvati!');
     };
+
+    const delBtn = document.getElementById('btnDeleteMonth');
+    if (delBtn) {
+        delBtn.onclick = () => {
+            if (state.salaries[state.view.year]) {
+                delete state.salaries[state.view.year][state.view.monthId];
+            }
+            const noteInput = document.getElementById('noteInput');
+            if (noteInput) noteInput.value = '';
+
+            saveData();
+            updateUI(false);
+            showToast('Mese cancellato!');
+        };
+    }
 
     document.getElementById('yearPicker').onchange = (e) => {
         state.view.year = parseInt(e.target.value);
