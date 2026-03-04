@@ -149,7 +149,6 @@ function injectSyncBadge() {
 function injectYtdBadge() {
     if (document.getElementById('ytdBadge')) return;
     
-    // Lo inseriamo affianco ai controlli dell'anno (freccette)
     const yearControls = document.querySelector('.year-controls');
     if (!yearControls) return;
     
@@ -157,7 +156,7 @@ function injectYtdBadge() {
     badge.id = 'ytdBadge';
     badge.className = 'ytd-badge ytd-neu';
     badge.title = 'Progresso dell\\'anno in corso rispetto al miglior anno storico nello stesso periodo';
-    badge.style.display = 'none'; // Nascosto di default, mostrato da calcolaYTD()
+    badge.style.display = 'none'; 
     
     yearControls.appendChild(badge);
 }
@@ -188,7 +187,6 @@ function setSyncStatus(status, extraText = '') {
 }
 
 function injectNoteAndDeleteControls() {
-    // textarea note
     if (!document.getElementById('noteInput')) {
       const inputSection = document.querySelector('.input-section');
       if (inputSection) {
@@ -204,7 +202,6 @@ function injectNoteAndDeleteControls() {
       }
     }
   
-    // bottone cestino
     const actions = document.querySelector('.form-actions');
     if (actions && !document.getElementById('btnDeleteMonth')) {
       actions.style.gap = '1rem';
@@ -248,12 +245,29 @@ function injectKpiIcons() {
 
 function normalizeEntry(entry) {
     if (entry === null || entry === undefined) return null;
+    
+    // Se è già un numero
     if (typeof entry === 'number') return { amount: entry, note: '' };
-    if (typeof entry === 'object') {
-      const amount = (typeof entry.amount === 'number') ? entry.amount : (entry.amount ? parseFloat(entry.amount) : null);
-      const note = (entry.note ? String(entry.note) : '');
-      return { amount: (isNaN(amount) ? null : amount), note };
+    
+    // Se è un oggetto strutturato (es. {amount: 2500, note: "Bonus"})
+    if (typeof entry === 'object' && entry !== null) {
+      // Alcune API o JSON.parse possono trasformare in stringa l'amount
+      let amount = parseFloat(entry.amount);
+      if (isNaN(amount) && typeof entry.amount !== 'number') {
+        amount = null; // Gestione se l'oggetto ha amount ma è non valido
+      }
+      
+      const note = entry.note ? String(entry.note) : '';
+      
+      // Controllo di fallback se l'oggetto stesso è un JSON raw incapsulato
+      if (amount === null && typeof entry === 'string') {
+          return normalizeEntry(parseFloat(entry));
+      }
+      
+      return { amount: amount, note: note };
     }
+    
+    // Se è una stringa semplice (formato vecchio salvato male)
     const n = parseFloat(entry);
     return isNaN(n) ? null : { amount: n, note: '' };
 }
@@ -287,30 +301,24 @@ function updateYTDBadge() {
     const currentYear = state.view.year;
     const yearData = state.salaries[currentYear] || {};
     
-    // Trova tutti i mesi (ID) che hanno un valore nell'anno selezionato
     const filledMonths = MENSILITA.filter(m => getAmount(yearData[m.id]) !== null).map(m => m.id);
     
-    // Se non ci sono mesi compilati nell'anno in corso, nascondiamo il badge
     if (filledMonths.length === 0) {
         badge.style.display = 'none';
         return;
     }
 
-    // Calcola il totale parziale (YTD) per i mesi compilati nell'anno in corso
     const currentYTDTotal = filledMonths.reduce((sum, mId) => sum + getAmount(yearData[mId]), 0);
 
-    // Cerchiamo il totale più alto raggiunto STESSI MESI negli anni precedenti
     let bestPastTotal = 0;
     let bestPastYear = null;
 
     Object.keys(state.salaries).forEach(y => {
         const pastYear = parseInt(y);
-        // Escludiamo l'anno corrente in visualizzazione 
         if (pastYear === currentYear) return;
         
         const pastYearData = state.salaries[pastYear] || {};
         
-        // Verifica se l'anno passato ha TUTTI i mesi che stiamo confrontando
         const hasAllRequiredMonths = filledMonths.every(mId => getAmount(pastYearData[mId]) !== null);
         
         if (hasAllRequiredMonths) {
@@ -322,22 +330,18 @@ function updateYTDBadge() {
         }
     });
 
-    // Se non ci sono anni precedenti validi con cui fare il confronto
     if (bestPastTotal === 0) {
         badge.style.display = 'none';
         return;
     }
 
-    // Calcoliamo la variazione percentuale
     const pct = ((currentYTDTotal - bestPastTotal) / bestPastTotal) * 100;
     const isPositive = pct >= 0;
     
-    // Aggiorniamo UI badge
     badge.style.display = 'inline-flex';
     badge.className = `ytd-badge ${isPositive ? 'ytd-pos' : 'ytd-neg'}`;
     
     const sign = isPositive ? '+' : '';
-    // Es. +5.2% vs Max (2024)
     badge.innerHTML = `<i class="fa-solid ${isPositive ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}" style="margin-right:4px;"></i> ${sign}${pct.toFixed(1)}% vs MAX`;
     badge.title = `Totale attuale (${currentYTDTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})}) rispetto al record storico degli stessi mesi nel ${bestPastYear} (${bestPastTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})})`;
 }
@@ -359,7 +363,10 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                state = await apiResp.json();
+                // Modifica qui per parsare correttamente il JSON raw dalle API
+                const textData = await apiResp.text();
+                state = JSON.parse(textData);
+                
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
                 console.log("✅ Dati caricati da GitHub API (No Cache)");
                 loadedFromGitHub = true;
@@ -638,7 +645,7 @@ function updateCharts() {
     const accentColor = styles.getPropertyValue('--primary').trim();
     const mutedColor = styles.getPropertyValue('--text-muted').trim() || '#6c757d';
     const successColor = styles.getPropertyValue('--success').trim();
-    const dangerColor = '#ef233c'; // Rosso per delta negativi
+    const dangerColor = '#ef233c'; 
 
     // --- 1. Monthly Chart ---
     const ctxM = document.getElementById('monthlyChart').getContext('2d');
