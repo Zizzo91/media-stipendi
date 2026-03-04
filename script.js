@@ -72,27 +72,53 @@ function checkMagicLink() {
 // CARICAMENTO DATI
 // ========================================
 async function loadData() {
-    try {
-        const cacheBuster = "?t=" + new Date().getTime();
-        const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
-        const response = await fetch(url);
-        if (response.ok) {
-            state = await response.json();
-            localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-            console.log("✅ Dati caricati da GitHub");
-            return;
-        }
-    } catch (e) { console.warn("GitHub offline, uso dati locali:", e); }
+    let loadedFromGitHub = false;
+    const token = localStorage.getItem("gh_token");
 
-    const saved = localStorage.getItem(CONFIG.storageKey);
-    if (saved) {
-        try {
-            state = JSON.parse(saved);
-            if (!state.view) state.view = { year: 2026, monthId: '01' };
-            if (!state.salaries) state.salaries = {};
-        } catch (e) {}
+    try {
+        if (token) {
+            // Se c'è il token, bypassiamo la cache usando le API di GitHub
+            const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
+            const apiResp = await fetch(apiUrl, {
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3.raw'
+                }
+            });
+            if (apiResp.ok) {
+                state = await apiResp.json();
+                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                console.log("✅ Dati caricati da GitHub API (No Cache)");
+                loadedFromGitHub = true;
+            }
+        }
+
+        if (!loadedFromGitHub) {
+            const cacheBuster = "?t=" + new Date().getTime();
+            const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
+            const response = await fetch(url);
+            if (response.ok) {
+                state = await response.json();
+                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                console.log("✅ Dati caricati da GitHub Raw");
+                loadedFromGitHub = true;
+            }
+        }
+    } catch (e) { 
+        console.warn("GitHub offline o errore rete, uso dati locali:", e); 
     }
 
+    if (!loadedFromGitHub) {
+        const saved = localStorage.getItem(CONFIG.storageKey);
+        if (saved) {
+            try {
+                state = JSON.parse(saved);
+            } catch (e) {}
+        }
+    }
+
+    if (!state.view) state.view = { year: 2026, monthId: '01' };
+    if (!state.salaries) state.salaries = {};
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
