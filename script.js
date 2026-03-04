@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initYearSelectors();
     setInitialDate();
     setupEventListeners();
+    setupCurrencyFormatter();
     updateUI(true);
 });
 
@@ -207,6 +208,64 @@ function updateUI(resetComparison = false) {
 }
 
 // ========================================
+// FORMATTAZIONE VALUTA INPUT
+// ========================================
+function setupCurrencyFormatter() {
+    const displayInput = document.getElementById('salaryDisplay');
+    const hiddenInput = document.getElementById('salaryInput');
+
+    displayInput.addEventListener('input', function(e) {
+        // Permette solo numeri e virgola (opzionale punto)
+        let value = e.target.value.replace(/[^0-9.,]/g, '');
+        
+        // Converte eventuale punto in virgola per l'inserimento
+        value = value.replace(/\./g, ',');
+        
+        // Gestisce più virgole, tiene solo la prima
+        const parts = value.split(',');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+        
+        // Limita a due decimali
+        if (value.includes(',')) {
+            const dec = value.split(',')[1];
+            if (dec.length > 2) {
+                value = value.split(',')[0] + ',' + dec.substring(0, 2);
+            }
+        }
+
+        // Estrae il numero pulito per il formatting
+        let numForFormatting = value.replace(/,/g, '.');
+        let parsed = parseFloat(numForFormatting);
+
+        if (!isNaN(parsed) && value !== '') {
+            // Se c'è una virgola finale o finisce con virgola+zero, mostra il testo digitato
+            // Altrimenti formatta
+            if (value.endsWith(',') || (value.includes(',') && value.endsWith('0'))) {
+                // Mantiene i punti delle migliaia ma lascia i decimali come digitati
+                const intPart = parseInt(parts[0], 10).toLocaleString('it-IT');
+                const decPart = parts.length > 1 ? ',' + parts[1] : '';
+                displayInput.value = intPart + decPart;
+            } else {
+                // Formattazione completa per display (es. 2.500,50)
+                displayInput.value = parsed.toLocaleString('it-IT');
+            }
+            // Aggiorna campo nascosto con valore numerico reale per il salvataggio
+            hiddenInput.value = parsed;
+        } else {
+            displayInput.value = '';
+            hiddenInput.value = '';
+        }
+    });
+
+    // Seleziona tutto il testo al click per facilitare la modifica
+    displayInput.addEventListener('focus', function() {
+        this.select();
+    });
+}
+
+// ========================================
 // RENDERING
 // ========================================
 function renderMonthGrid() {
@@ -231,7 +290,18 @@ function renderForm() {
     const mInfo = MENSILITA.find(m => m.id === state.view.monthId);
     document.getElementById('formTitle').textContent = `${mInfo.full} ${state.view.year}`;
     const val = state.salaries[state.view.year]?.[state.view.monthId];
-    document.getElementById('salaryInput').value = val ? val : '';
+    
+    // Aggiorna sia il display formattato che l'input nascosto
+    const displayInput = document.getElementById('salaryDisplay');
+    const hiddenInput = document.getElementById('salaryInput');
+    
+    if (val) {
+        hiddenInput.value = val;
+        displayInput.value = parseFloat(val).toLocaleString('it-IT');
+    } else {
+        hiddenInput.value = '';
+        displayInput.value = '';
+    }
 }
 
 function renderKPIs() {
