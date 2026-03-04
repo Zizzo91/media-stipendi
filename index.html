@@ -61,7 +61,8 @@
         <div class="input-section">
             <div class="input-container">
                 <span style="font-size: 1.5rem; margin-right: 10px; color: var(--text-muted);">€</span>
-                <input type="number" id="salaryInput" placeholder="0.00" step="0.01">
+                <input type="text" inputmode="decimal" id="salaryDisplay" placeholder="0,00" style="width: 250px; border: none; border-bottom: 3px solid var(--primary); background: transparent; color: var(--text); text-align: center; font-weight: 700; outline: none; font-size: inherit; font-family: inherit;">
+                <input type="hidden" id="salaryInput">
             </div>
             
             <div class="form-actions">
