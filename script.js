@@ -79,6 +79,7 @@ function getHasToken() {
 function enhanceUI() {
     injectEnhancementStyles();
     injectSyncBadge();
+    injectYtdBadge();
     injectNoteAndDeleteControls();
     injectTableVariationColumn();
     injectKpiIcons();
@@ -96,6 +97,12 @@ function injectEnhancementStyles() {
       .sync-syncing .sync-dot{background:var(--accent)}
       .sync-synced .sync-dot{background:var(--success)}
       .sync-error .sync-dot{background:var(--danger)}
+      
+      .ytd-badge{display:inline-flex;align-items:center;margin-left:0.5rem;padding:.2rem .5rem;border-radius:6px;font-size:.85rem;font-weight:600;background:var(--bg);border:1px solid var(--border);white-space:nowrap}
+      .ytd-pos{color:var(--success); border-color:var(--success)}
+      .ytd-neg{color:var(--danger); border-color:var(--danger)}
+      .ytd-neu{color:var(--text-muted)}
+      
       .note-wrap{margin-top:.75rem;text-align:left}
       #noteInput{width:100%;min-height:64px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--bg);color:var(--text)}
       .btn-danger{background:var(--danger);color:#fff;flex-grow:1}
@@ -137,6 +144,22 @@ function injectSyncBadge() {
     badge.appendChild(dot);
     badge.appendChild(text);
     container.appendChild(badge);
+}
+
+function injectYtdBadge() {
+    if (document.getElementById('ytdBadge')) return;
+    
+    // Lo inseriamo affianco ai controlli dell'anno (freccette)
+    const yearControls = document.querySelector('.year-controls');
+    if (!yearControls) return;
+    
+    const badge = document.createElement('div');
+    badge.id = 'ytdBadge';
+    badge.className = 'ytd-badge ytd-neu';
+    badge.title = 'Progresso dell\\'anno in corso rispetto al miglior anno storico nello stesso periodo';
+    badge.style.display = 'none'; // Nascosto di default, mostrato da calcolaYTD()
+    
+    yearControls.appendChild(badge);
 }
 
 function setSyncStatus(status, extraText = '') {
@@ -252,6 +275,71 @@ function fmtPercent(p) {
 
 function isSmallScreen() {
     return window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
+}
+
+// ========================================
+// CALCOLO YTD (Year-to-Date vs Best Year)
+// ========================================
+function updateYTDBadge() {
+    const badge = document.getElementById('ytdBadge');
+    if (!badge) return;
+
+    const currentYear = state.view.year;
+    const yearData = state.salaries[currentYear] || {};
+    
+    // Trova tutti i mesi (ID) che hanno un valore nell'anno selezionato
+    const filledMonths = MENSILITA.filter(m => getAmount(yearData[m.id]) !== null).map(m => m.id);
+    
+    // Se non ci sono mesi compilati nell'anno in corso, nascondiamo il badge
+    if (filledMonths.length === 0) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    // Calcola il totale parziale (YTD) per i mesi compilati nell'anno in corso
+    const currentYTDTotal = filledMonths.reduce((sum, mId) => sum + getAmount(yearData[mId]), 0);
+
+    // Cerchiamo il totale più alto raggiunto STESSI MESI negli anni precedenti
+    let bestPastTotal = 0;
+    let bestPastYear = null;
+
+    Object.keys(state.salaries).forEach(y => {
+        const pastYear = parseInt(y);
+        // Escludiamo l'anno corrente in visualizzazione 
+        if (pastYear === currentYear) return;
+        
+        const pastYearData = state.salaries[pastYear] || {};
+        
+        // Verifica se l'anno passato ha TUTTI i mesi che stiamo confrontando
+        const hasAllRequiredMonths = filledMonths.every(mId => getAmount(pastYearData[mId]) !== null);
+        
+        if (hasAllRequiredMonths) {
+            const pastTotal = filledMonths.reduce((sum, mId) => sum + getAmount(pastYearData[mId]), 0);
+            if (pastTotal > bestPastTotal) {
+                bestPastTotal = pastTotal;
+                bestPastYear = pastYear;
+            }
+        }
+    });
+
+    // Se non ci sono anni precedenti validi con cui fare il confronto
+    if (bestPastTotal === 0) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    // Calcoliamo la variazione percentuale
+    const pct = ((currentYTDTotal - bestPastTotal) / bestPastTotal) * 100;
+    const isPositive = pct >= 0;
+    
+    // Aggiorniamo UI badge
+    badge.style.display = 'inline-flex';
+    badge.className = `ytd-badge ${isPositive ? 'ytd-pos' : 'ytd-neg'}`;
+    
+    const sign = isPositive ? '+' : '';
+    // Es. +5.2% vs Max (2024)
+    badge.innerHTML = `<i class="fa-solid ${isPositive ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}" style="margin-right:4px;"></i> ${sign}${pct.toFixed(1)}% vs MAX`;
+    badge.title = `Totale attuale (${currentYTDTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})}) rispetto al record storico degli stessi mesi nel ${bestPastYear} (${bestPastTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})})`;
 }
 
 // ========================================
@@ -386,6 +474,7 @@ function updateUI(resetComparison = false) {
     renderForm();
     renderKPIs();
     renderTable();
+    updateYTDBadge();
     
     document.getElementById('yearPicker').value = state.view.year;
     
