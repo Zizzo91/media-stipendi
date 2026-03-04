@@ -246,28 +246,20 @@ function injectKpiIcons() {
 function normalizeEntry(entry) {
     if (entry === null || entry === undefined) return null;
     
-    // Se è già un numero
     if (typeof entry === 'number') return { amount: entry, note: '' };
     
-    // Se è un oggetto strutturato (es. {amount: 2500, note: "Bonus"})
     if (typeof entry === 'object' && entry !== null) {
-      // Alcune API o JSON.parse possono trasformare in stringa l'amount
       let amount = parseFloat(entry.amount);
       if (isNaN(amount) && typeof entry.amount !== 'number') {
-        amount = null; // Gestione se l'oggetto ha amount ma è non valido
+        amount = null; 
       }
-      
       const note = entry.note ? String(entry.note) : '';
-      
-      // Controllo di fallback se l'oggetto stesso è un JSON raw incapsulato
       if (amount === null && typeof entry === 'string') {
           return normalizeEntry(parseFloat(entry));
       }
-      
       return { amount: amount, note: note };
     }
     
-    // Se è una stringa semplice (formato vecchio salvato male)
     const n = parseFloat(entry);
     return isNaN(n) ? null : { amount: n, note: '' };
 }
@@ -358,17 +350,17 @@ async function loadData() {
             const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
             const apiResp = await fetch(apiUrl, {
                 headers: {
-                    'Authorization': `token ${token}`,
-                    'Accept': 'application/vnd.github.v3.raw'
+                    'Authorization': `token ${token}`
                 }
             });
             if (apiResp.ok) {
-                // Modifica qui per parsare correttamente il JSON raw dalle API
-                const textData = await apiResp.text();
-                state = JSON.parse(textData);
+                const jsonResp = await apiResp.json();
+                // Decodifica il contenuto base64 restituito dalle API di GitHub
+                const decodedContent = decodeURIComponent(escape(window.atob(jsonResp.content)));
+                state = JSON.parse(decodedContent);
                 
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API (No Cache)");
+                console.log("✅ Dati caricati da GitHub API");
                 loadedFromGitHub = true;
             }
         }
