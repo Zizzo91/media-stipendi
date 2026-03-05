@@ -44,6 +44,12 @@ select#yearPicker { padding: 0.5rem 1rem; border-radius: 8px; border: 2px solid 
 .month-box.extra { background: var(--primary-light); color: var(--primary); border-style: dashed; }
 .month-box.is-current-glob { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* YTD Badge */
+.ytd-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0.3rem 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; border: 1px solid var(--border); }
+.ytd-badge.pos { color: var(--success); border-color: var(--success); background: rgba(46, 196, 182, 0.1); }
+.ytd-badge.neg { color: var(--danger); border-color: var(--danger); background: rgba(239, 35, 60, 0.1); }
+.ytd-badge.neu { color: var(--text-muted); background: var(--bg); }
+
 /* Input Section */
 .input-section { text-align: center; max-width: 600px; margin: 0 auto; width: 100%; }
 .input-container { display: flex; align-items: center; justify-content: center; margin: 1.5rem 0; font-size: 2.5rem; }
