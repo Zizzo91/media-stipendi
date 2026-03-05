@@ -454,19 +454,26 @@ function updateYtdBadge() {
         return;
     }
 
-    const pct = ((currTotal - bestPastTotal) / bestPastTotal) * 100;
-    const isPos = pct > 0;
-    const isNeu = pct === 0;
+    const diff = currTotal - bestPastTotal;
+    const pct = (diff / bestPastTotal) * 100;
+    const isPos = diff > 0;
+    const isNeu = diff === 0;
 
     let cls = 'ytd-badge ';
     let icon = '';
     let sign = '';
 
+    const diffFormatted = new Intl.NumberFormat('it-IT', { 
+        style: 'currency', 
+        currency: 'EUR', 
+        signDisplay: 'always' 
+    }).format(diff);
+
     if (isPos) {
         cls += 'pos';
         icon = '<i class="fa-solid fa-arrow-trend-up"></i>';
         sign = '+';
-    } else if (pct < 0) {
+    } else if (diff < 0) {
         cls += 'neg';
         icon = '<i class="fa-solid fa-arrow-trend-down"></i>';
     } else {
@@ -475,7 +482,13 @@ function updateYtdBadge() {
     }
 
     badge.className = cls;
-    badge.innerHTML = `${icon} ${sign}${pct.toFixed(1)}% vs MAX (${bestPastYear})`;
+    
+    if (isNeu) {
+        badge.innerHTML = `${icon} Pari al MAX (${bestPastYear})`;
+    } else {
+        badge.innerHTML = `${icon} ${sign}${Math.abs(pct).toFixed(1)}% (${diffFormatted}) vs MAX (${bestPastYear})`;
+    }
+    
     badge.title = `Totale attuale (stessi mesi): € ${currTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}\nMax storico nello stesso periodo (${bestPastYear}): € ${bestPastTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}`;
     badge.style.display = 'inline-flex';
 }
