@@ -13,7 +13,7 @@
     <!-- Chart.js Plugin Datalabels (Opzionale per etichette avanzate, ma usiamo base Chart.js per leggerezza) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -46,7 +46,10 @@
 
     <!-- Sezione Mesi -->
     <div class="card">
-        <h3>Seleziona Mese</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 10px;">
+            <h3 style="margin: 0;">Seleziona Mese</h3>
+            <div id="ytdBadge" class="ytd-badge" style="display: none;" title="Confronto con l'anno migliore per gli stessi mesi"></div>
+        </div>
         <div class="month-grid" id="monthGrid"></div>
     </div>
 
@@ -151,6 +154,6 @@
 
 <div id="toast" class="toast">Messaggio</div>
 
-<script src="script.js"></script>
+<script src="script.js?v=6"></script>
 </body>
 </html>
