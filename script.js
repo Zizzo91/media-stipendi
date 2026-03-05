@@ -32,7 +32,7 @@ const MENSILITA = [
 ];
 
 let state = {
-    view: { year: new Date().getFullYear(), monthId: '01' },
+    view: { year: 2026, monthId: '01' },
     salaries: {},
     theme: 'light'
 };
@@ -45,28 +45,16 @@ let yChart = null; // Grafico Annuale
 // AVVIO APP
 // ========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        checkMagicLink();
-        await loadData();
-        initYearSelectors();
-        setInitialDate();
+    checkMagicLink();
+    await loadData();
+    initYearSelectors();
+    setInitialDate();
 
-        enhanceUI();
-        setupEventListeners();
-        setupCurrencyFormatter();
+    enhanceUI();
+    setupEventListeners();
+    setupCurrencyFormatter();
 
-        updateUI(true);
-    } catch (error) {
-        console.error("FATAL ERROR IN APP INIT:", error);
-        alert("Si è verificato un errore: " + error.message);
-        const errDiv = document.createElement('div');
-        errDiv.style.background = 'red';
-        errDiv.style.color = 'white';
-        errDiv.style.padding = '20px';
-        errDiv.style.margin = '20px';
-        errDiv.innerHTML = `<h3>Errore Critico</h3><p>${error.message}</p><pre>${error.stack}</pre>`;
-        document.body.prepend(errDiv);
-    }
+    updateUI(true);
 });
 
 // ========================================
@@ -91,7 +79,6 @@ function getHasToken() {
 function enhanceUI() {
     injectEnhancementStyles();
     injectSyncBadge();
-    injectYtdBadge();
     injectNoteAndDeleteControls();
     injectTableVariationColumn();
     injectKpiIcons();
@@ -109,12 +96,6 @@ function injectEnhancementStyles() {
       .sync-syncing .sync-dot{background:var(--accent)}
       .sync-synced .sync-dot{background:var(--success)}
       .sync-error .sync-dot{background:var(--danger)}
-      
-      .ytd-badge{display:inline-flex;align-items:center;margin-left:0.5rem;padding:.2rem .5rem;border-radius:6px;font-size:.85rem;font-weight:600;background:var(--bg);border:1px solid var(--border);white-space:nowrap}
-      .ytd-pos{color:var(--success); border-color:var(--success)}
-      .ytd-neg{color:var(--danger); border-color:var(--danger)}
-      .ytd-neu{color:var(--text-muted)}
-      
       .note-wrap{margin-top:.75rem;text-align:left}
       #noteInput{width:100%;min-height:64px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--bg);color:var(--text)}
       .btn-danger{background:var(--danger);color:#fff;flex-grow:1}
@@ -158,21 +139,6 @@ function injectSyncBadge() {
     container.appendChild(badge);
 }
 
-function injectYtdBadge() {
-    if (document.getElementById('ytdBadge')) return;
-    
-    const yearControls = document.querySelector('.year-controls');
-    if (!yearControls) return;
-    
-    const badge = document.createElement('div');
-    badge.id = 'ytdBadge';
-    badge.className = 'ytd-badge ytd-neu';
-    badge.title = 'Progresso dell\\'anno in corso rispetto al miglior anno storico nello stesso periodo';
-    badge.style.display = 'none'; 
-    
-    yearControls.appendChild(badge);
-}
-
 function setSyncStatus(status, extraText = '') {
     const badge = document.getElementById('syncBadge');
     const text = document.getElementById('syncText');
@@ -199,6 +165,7 @@ function setSyncStatus(status, extraText = '') {
 }
 
 function injectNoteAndDeleteControls() {
+    // textarea note
     if (!document.getElementById('noteInput')) {
       const inputSection = document.querySelector('.input-section');
       if (inputSection) {
@@ -214,6 +181,7 @@ function injectNoteAndDeleteControls() {
       }
     }
   
+    // bottone cestino
     const actions = document.querySelector('.form-actions');
     if (actions && !document.getElementById('btnDeleteMonth')) {
       actions.style.gap = '1rem';
@@ -257,21 +225,12 @@ function injectKpiIcons() {
 
 function normalizeEntry(entry) {
     if (entry === null || entry === undefined) return null;
-    
     if (typeof entry === 'number') return { amount: entry, note: '' };
-    
-    if (typeof entry === 'object' && entry !== null) {
-      let amount = parseFloat(entry.amount);
-      if (isNaN(amount) && typeof entry.amount !== 'number') {
-        amount = null; 
-      }
-      const note = entry.note ? String(entry.note) : '';
-      if (amount === null && typeof entry === 'string') {
-          return normalizeEntry(parseFloat(entry));
-      }
-      return { amount: amount, note: note };
+    if (typeof entry === 'object') {
+      const amount = (typeof entry.amount === 'number') ? entry.amount : (entry.amount ? parseFloat(entry.amount) : null);
+      const note = (entry.note ? String(entry.note) : '');
+      return { amount: (isNaN(amount) ? null : amount), note };
     }
-    
     const n = parseFloat(entry);
     return isNaN(n) ? null : { amount: n, note: '' };
 }
@@ -295,89 +254,6 @@ function isSmallScreen() {
     return window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
 }
 
-function forceValidState(loadedState) {
-    const now = new Date();
-    let safeState = {
-        view: { year: now.getFullYear(), monthId: '01' },
-        salaries: {},
-        theme: 'light'
-    };
-    
-    if (loadedState && typeof loadedState === 'object') {
-        if (loadedState.view && typeof loadedState.view === 'object') {
-            safeState.view.year = loadedState.view.year || safeState.view.year;
-            safeState.view.monthId = loadedState.view.monthId || safeState.view.monthId;
-        }
-        if (loadedState.salaries && typeof loadedState.salaries === 'object') {
-            safeState.salaries = loadedState.salaries;
-        }
-        if (loadedState.theme) {
-            safeState.theme = loadedState.theme;
-        }
-    }
-    return safeState;
-}
-
-// ========================================
-// CALCOLO YTD (Year-to-Date vs Best Year)
-// ========================================
-function updateYTDBadge() {
-    const badge = document.getElementById('ytdBadge');
-    if (!badge) return;
-
-    if (!state || !state.view || !state.salaries) {
-        badge.style.display = 'none';
-        return;
-    }
-
-    const currentYear = state.view.year;
-    const yearData = state.salaries[currentYear] || {};
-    
-    const filledMonths = MENSILITA.filter(m => getAmount(yearData[m.id]) !== null).map(m => m.id);
-    
-    if (filledMonths.length === 0) {
-        badge.style.display = 'none';
-        return;
-    }
-
-    const currentYTDTotal = filledMonths.reduce((sum, mId) => sum + getAmount(yearData[mId]), 0);
-
-    let bestPastTotal = 0;
-    let bestPastYear = null;
-
-    Object.keys(state.salaries).forEach(y => {
-        const pastYear = parseInt(y);
-        if (pastYear === currentYear) return;
-        
-        const pastYearData = state.salaries[pastYear] || {};
-        
-        const hasAllRequiredMonths = filledMonths.every(mId => getAmount(pastYearData[mId]) !== null);
-        
-        if (hasAllRequiredMonths) {
-            const pastTotal = filledMonths.reduce((sum, mId) => sum + getAmount(pastYearData[mId]), 0);
-            if (pastTotal > bestPastTotal) {
-                bestPastTotal = pastTotal;
-                bestPastYear = pastYear;
-            }
-        }
-    });
-
-    if (bestPastTotal === 0) {
-        badge.style.display = 'none';
-        return;
-    }
-
-    const pct = ((currentYTDTotal - bestPastTotal) / bestPastTotal) * 100;
-    const isPositive = pct >= 0;
-    
-    badge.style.display = 'inline-flex';
-    badge.className = `ytd-badge ${isPositive ? 'ytd-pos' : 'ytd-neg'}`;
-    
-    const sign = isPositive ? '+' : '';
-    badge.innerHTML = `<i class="fa-solid ${isPositive ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}" style="margin-right:4px;"></i> ${sign}${pct.toFixed(1)}% vs MAX`;
-    badge.title = `Totale attuale (${currentYTDTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})}) rispetto al record storico degli stessi mesi nel ${bestPastYear} (${bestPastTotal.toLocaleString('it-IT', {style:'currency', currency:'EUR'})})`;
-}
-
 // ========================================
 // CARICAMENTO DATI
 // ========================================
@@ -395,10 +271,9 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                const textData = await apiResp.text();
-                state = forceValidState(JSON.parse(textData));
+                state = await apiResp.json();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API");
+                console.log("✅ Dati caricati da GitHub API (No Cache)");
                 loadedFromGitHub = true;
             }
         }
@@ -408,8 +283,7 @@ async function loadData() {
             const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
             const response = await fetch(url);
             if (response.ok) {
-                const rawJson = await response.json();
-                state = forceValidState(rawJson);
+                state = await response.json();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
                 console.log("✅ Dati caricati da GitHub Raw");
                 loadedFromGitHub = true;
@@ -423,15 +297,13 @@ async function loadData() {
         const saved = localStorage.getItem(CONFIG.storageKey);
         if (saved) {
             try {
-                state = forceValidState(JSON.parse(saved));
-            } catch (e) {
-                state = forceValidState({});
-            }
-        } else {
-            state = forceValidState({});
+                state = JSON.parse(saved);
+            } catch (e) {}
         }
     }
 
+    if (!state.view) state.view = { year: 2026, monthId: '01' };
+    if (!state.salaries) state.salaries = {};
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
@@ -439,7 +311,6 @@ async function loadData() {
 // SALVATAGGIO DATI
 // ========================================
 function saveData() {
-    if (!state || !state.view) state = forceValidState(state);
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
     syncToGitHub();
 }
@@ -478,7 +349,6 @@ async function syncToGitHub() {
 function setInitialDate() {
     if (!localStorage.getItem(CONFIG.storageKey)) {
         const now = new Date();
-        if(!state.view) state.view = {};
         state.view.year = now.getFullYear();
         state.view.monthId = (now.getMonth() + 1).toString().padStart(2, '0');
     }
@@ -512,13 +382,10 @@ function initYearSelectors() {
 }
 
 function updateUI(resetComparison = false) {
-    if (!state || !state.view) state = forceValidState(state);
-    
     renderMonthGrid();
     renderForm();
     renderKPIs();
     renderTable();
-    updateYTDBadge();
     
     document.getElementById('yearPicker').value = state.view.year;
     
@@ -682,7 +549,7 @@ function updateCharts() {
     const accentColor = styles.getPropertyValue('--primary').trim();
     const mutedColor = styles.getPropertyValue('--text-muted').trim() || '#6c757d';
     const successColor = styles.getPropertyValue('--success').trim();
-    const dangerColor = '#ef233c'; 
+    const dangerColor = '#ef233c'; // Rosso per delta negativi
 
     // --- 1. Monthly Chart ---
     const ctxM = document.getElementById('monthlyChart').getContext('2d');
@@ -981,7 +848,8 @@ function setupEventListeners() {
         reader.onload = (event) => {
             try {
                 const imp = JSON.parse(event.target.result);
-                state = forceValidState(imp);
+                if (!imp.salaries) throw new Error("Format");
+                state = imp;
                 saveData();
                 updateUI(true);
                 if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
