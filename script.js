@@ -213,7 +213,8 @@ function injectKpiIcons() {
     const cards = document.querySelectorAll('.kpi-card');
     if (!cards || !cards.length) return;
   
-    const icons = ['fa-calendar-check', 'fa-chart-line', 'fa-trophy', 'fa-list-check'];
+    // Aggiunto fa-wand-magic-sparkles per la Proiezione Annua
+    const icons = ['fa-calendar-check', 'fa-chart-line', 'fa-trophy', 'fa-wand-magic-sparkles', 'fa-list-check'];
     cards.forEach((card, idx) => {
       if (card.querySelector('.kpi-icon')) return;
       const div = document.createElement('div');
@@ -592,6 +593,28 @@ function renderKPIs() {
   
     const total = values.reduce((a, b) => a + b, 0);
     const avg = values.length ? (total / 12) : 0;
+    
+    // --- Calcolo Proiezione Annua ---
+    const avgPerPaycheck = values.length ? (total / values.length) : 0;
+    let typicalMonths = 13; // Valore di default in Italia (12 mesi + 13esima)
+    let maxPastMonths = 0;
+    
+    // Controlla il passato per capire se prendi 13 o 14 mensilità abitualmente
+    Object.keys(state.salaries).forEach(y => {
+        if (parseInt(y) < state.view.year) {
+            const pastVals = Object.values(state.salaries[y]).map(e => getAmount(e)).filter(v => typeof v === 'number');
+            if (pastVals.length > maxPastMonths) maxPastMonths = pastVals.length;
+        }
+    });
+    // Limita tra 12 e 14 per stare su numeri realistici
+    if (maxPastMonths >= 12 && maxPastMonths <= 14) typicalMonths = maxPastMonths;
+
+    let forecast = total;
+    if (values.length > 0 && values.length < typicalMonths) {
+        // Aggiunge al totale accumulato finora la stima per i mesi mancanti
+        forecast = total + (avgPerPaycheck * (typicalMonths - values.length));
+    }
+    // --------------------------------
   
     document.getElementById('kpiTotal').textContent =
       total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
@@ -601,6 +624,14 @@ function renderKPIs() {
   
     document.getElementById('kpiMax').textContent =
       values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
+
+    // Nuovo KPI Proiezione
+    const kpiForecastEl = document.getElementById('kpiForecast');
+    if (kpiForecastEl) {
+        kpiForecastEl.textContent = values.length > 0 
+            ? forecast.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) 
+            : '-';
+    }
   
     document.getElementById('kpiCount').textContent = `${values.length} / 14`;
 }
