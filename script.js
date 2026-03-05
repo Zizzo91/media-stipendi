@@ -45,16 +45,28 @@ let yChart = null; // Grafico Annuale
 // AVVIO APP
 // ========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    checkMagicLink();
-    await loadData();
-    initYearSelectors();
-    setInitialDate();
+    try {
+        checkMagicLink();
+        await loadData();
+        initYearSelectors();
+        setInitialDate();
 
-    enhanceUI();
-    setupEventListeners();
-    setupCurrencyFormatter();
+        enhanceUI();
+        setupEventListeners();
+        setupCurrencyFormatter();
 
-    updateUI(true);
+        updateUI(true);
+    } catch (error) {
+        console.error("FATAL ERROR IN APP INIT:", error);
+        alert("Si è verificato un errore: " + error.message);
+        const errDiv = document.createElement('div');
+        errDiv.style.background = 'red';
+        errDiv.style.color = 'white';
+        errDiv.style.padding = '20px';
+        errDiv.style.margin = '20px';
+        errDiv.innerHTML = `<h3>Errore Critico</h3><p>${error.message}</p><pre>${error.stack}</pre>`;
+        document.body.prepend(errDiv);
+    }
 });
 
 // ========================================
