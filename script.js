@@ -386,6 +386,7 @@ function updateUI(resetComparison = false) {
     renderForm();
     renderKPIs();
     renderTable();
+    updateYtdBadge();
     
     document.getElementById('yearPicker').value = state.view.year;
     
@@ -395,6 +396,88 @@ function updateUI(resetComparison = false) {
     }
 
     updateCharts();
+}
+
+function updateYtdBadge() {
+    const badge = document.getElementById('ytdBadge');
+    if (!badge) return;
+
+    if (!state || !state.salaries || !state.view) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    const currYear = state.view.year;
+    const currYearData = state.salaries[currYear] || {};
+    
+    // Trova i mesi che hanno dati validi per l'anno attualmente visualizzato
+    const filledMonths = MENSILITA.map(m => m.id).filter(mId => getAmount(currYearData[mId]) !== null);
+    
+    // Se non ci sono mesi compilati quest'anno, nascondi
+    if (filledMonths.length === 0) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    // Calcola il totale dei mesi compilati per l'anno attuale
+    const currTotal = filledMonths.reduce((sum, mId) => sum + getAmount(currYearData[mId]), 0);
+
+    let bestPastTotal = 0;
+    let bestPastYear = null;
+
+    Object.keys(state.salaries).forEach(yStr => {
+        const y = parseInt(yStr);
+        if (y >= currYear) return; // Paragona solo agli anni precedenti a quello selezionato
+        
+        const pastData = state.salaries[y] || {};
+        
+        let pastTotal = 0;
+        let hasValidData = false;
+        
+        filledMonths.forEach(mId => {
+            const amount = getAmount(pastData[mId]);
+            if (amount !== null) {
+                pastTotal += amount;
+                hasValidData = true;
+            }
+        });
+
+        // Contiamo questo anno passato solo se ha almeno un dato tra i mesi di interesse
+        if (hasValidData && pastTotal > bestPastTotal) {
+            bestPastTotal = pastTotal;
+            bestPastYear = y;
+        }
+    });
+
+    if (bestPastTotal <= 0) {
+        badge.style.display = 'none';
+        return;
+    }
+
+    const pct = ((currTotal - bestPastTotal) / bestPastTotal) * 100;
+    const isPos = pct > 0;
+    const isNeu = pct === 0;
+
+    let cls = 'ytd-badge ';
+    let icon = '';
+    let sign = '';
+
+    if (isPos) {
+        cls += 'pos';
+        icon = '<i class="fa-solid fa-arrow-trend-up"></i>';
+        sign = '+';
+    } else if (pct < 0) {
+        cls += 'neg';
+        icon = '<i class="fa-solid fa-arrow-trend-down"></i>';
+    } else {
+        cls += 'neu';
+        icon = '<i class="fa-solid fa-minus"></i>';
+    }
+
+    badge.className = cls;
+    badge.innerHTML = `${icon} ${sign}${pct.toFixed(1)}% vs MAX (${bestPastYear})`;
+    badge.title = `Totale attuale (stessi mesi): € ${currTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}\nMax storico nello stesso periodo (${bestPastYear}): € ${bestPastTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}`;
+    badge.style.display = 'inline-flex';
 }
 
 // ========================================
