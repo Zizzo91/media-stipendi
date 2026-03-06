@@ -34,7 +34,8 @@ const MENSILITA = [
 let state = {
     view: { year: 2026, monthId: '01' },
     salaries: {},
-    theme: 'light'
+    theme: 'light',
+    lastUpdated: Date.now()
 };
 
 let mChart = null; // Grafico Mensile
@@ -284,6 +285,13 @@ function isSmallScreen() {
 async function loadData() {
     let loadedFromGitHub = false;
     const token = localStorage.getItem("gh_token");
+    
+    // Leggi subito il dato locale per eventuale comparazione
+    const localSaved = localStorage.getItem(CONFIG.storageKey);
+    let localState = null;
+    if (localSaved) {
+        try { localState = JSON.parse(localSaved); } catch (e) {}
+    }
 
     try {
         if (token) {
@@ -295,9 +303,19 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                state = await apiResp.json();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API (No Cache)");
+                const ghState = await apiResp.json();
+                
+                const ghTime = ghState.lastUpdated || 0;
+                const locTime = localState ? (localState.lastUpdated || 0) : 0;
+                
+                if (ghTime >= locTime || !localState) {
+                    state = ghState;
+                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                    console.log("✅ Dati caricati da GitHub API (No Cache)");
+                } else {
+                    state = localState;
+                    console.log("✅ Dati locali più recenti mantenuti (GitHub era in cache)");
+                }
                 loadedFromGitHub = true;
             }
         }
@@ -307,9 +325,19 @@ async function loadData() {
             const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
             const response = await fetch(url);
             if (response.ok) {
-                state = await response.json();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub Raw");
+                const ghState = await response.json();
+                
+                const ghTime = ghState.lastUpdated || 0;
+                const locTime = localState ? (localState.lastUpdated || 0) : 0;
+                
+                if (ghTime >= locTime || !localState) {
+                    state = ghState;
+                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                    console.log("✅ Dati caricati da GitHub Raw");
+                } else {
+                    state = localState;
+                    console.log("✅ Dati locali più recenti mantenuti");
+                }
                 loadedFromGitHub = true;
             }
         }
@@ -317,17 +345,13 @@ async function loadData() {
         console.warn("GitHub offline o errore rete, uso dati locali:", e); 
     }
 
-    if (!loadedFromGitHub) {
-        const saved = localStorage.getItem(CONFIG.storageKey);
-        if (saved) {
-            try {
-                state = JSON.parse(saved);
-            } catch (e) {}
-        }
+    if (!loadedFromGitHub && localState) {
+        state = localState;
     }
 
     if (!state.view) state.view = { year: 2026, monthId: '01' };
     if (!state.salaries) state.salaries = {};
+    if (!state.lastUpdated) state.lastUpdated = Date.now();
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
@@ -335,7 +359,9 @@ async function loadData() {
 // SALVATAGGIO DATI
 // ========================================
 function saveData() {
+    state.lastUpdated = Date.now();
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+    console.log("💾 Salvataggio in locale:", JSON.stringify(state)); // Debug utile
     syncToGitHub();
 }
 
@@ -353,13 +379,20 @@ async function syncToGitHub() {
             if (getResp.ok) sha = (await getResp.json()).sha;
         } catch (e) {}
 
-        const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
-        await fetch(apiUrl, {
+        const finalJSON = JSON.stringify(state, null, 2);
+        console.log("🚀 Payload inviato a GitHub:", finalJSON);
+        
+        const contentBase64 = window.btoa(unescape(encodeURIComponent(finalJSON)));
+        
+        const putResp = await fetch(apiUrl, {
             method: 'PUT',
             headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: "Update " + new Date().toISOString().slice(0, 10), content: contentBase64, sha: sha })
         });
-        console.log("✅ Salvato su GitHub");
+        
+        if (!putResp.ok) throw new Error("Errore API GitHub: " + putResp.status);
+        
+        console.log("✅ Salvato su GitHub con successo");
         setSyncStatus('synced', new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
     } catch (error) { 
         console.error("Errore Sync:", error);
