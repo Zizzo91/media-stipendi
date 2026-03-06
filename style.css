@@ -90,6 +90,10 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-gradien
 
 /* Charts Layout */
 .charts-container { display: flex; flex-direction: column; gap: 2rem; width: 100%; }
+
+/* Grid per affiancare i grafici (Storico e Confronto) */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; width: 100%; }
+
 .chart-card { min-height: 400px; height: 400px; display: flex; flex-direction: column; width: 100%; }
 
 .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px; }
@@ -115,6 +119,11 @@ tbody tr:hover { background: var(--primary-light); }
 .icon-btn:hover:not(.navbar .icon-btn) { background: var(--bg); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2b2d42; color: white; padding: 12px 24px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 .toast.show { opacity: 1; bottom: 40px; }
+
+/* Responsive Adjustments */
+@media (max-width: 950px) {
+    .charts-grid { grid-template-columns: 1fr; gap: 2rem; } /* Passa a colonna singola su tablet/mobile */
+}
 
 @media (max-width: 850px) {
     .month-grid { grid-template-columns: repeat(4, 1fr); }
