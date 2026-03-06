@@ -37,9 +37,9 @@ let state = {
     theme: 'light'
 };
 
-let mChart = null;
-let cChart = null;
-let yChart = null;
+let mChart = null; // Grafico Mensile
+let cChart = null; // Grafico Confronto
+let yChart = null; // Grafico Annuale
 
 // ========================================
 // AVVIO APP
@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateUI(true);
 });
 
+// ========================================
+// GESTIONE TOKEN E UI INJECTED
+// ========================================
 function checkMagicLink() {
     const urlParams = new URLSearchParams(window.location.search);
     const magicToken = urlParams.get('token');
@@ -84,6 +87,7 @@ function enhanceUI() {
 
 function injectEnhancementStyles() {
     if (document.getElementById('enhancements-css')) return;
+  
     const css = `
       .sync-badge{display:inline-flex;align-items:center;gap:.5rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:999px;font-size:.85rem}
       .sync-dot{width:.6rem;height:.6rem;border-radius:50%}
@@ -136,18 +140,23 @@ function injectEnhancementStyles() {
 
 function injectSyncBadge() {
     if (document.getElementById('syncBadge')) return;
+  
     const container = document.querySelector('.navbar .year-selector-container');
     if (!container) return;
+  
     const badge = document.createElement('div');
     badge.id = 'syncBadge';
     badge.className = 'sync-badge sync-local';
     badge.title = 'Stato sincronizzazione';
+  
     const dot = document.createElement('span');
     dot.className = 'sync-dot';
     dot.id = 'syncDot';
+  
     const text = document.createElement('span');
     text.id = 'syncText';
     text.textContent = 'Locale';
+  
     badge.appendChild(dot);
     badge.appendChild(text);
     container.appendChild(badge);
@@ -157,15 +166,29 @@ function setSyncStatus(status, extraText = '') {
     const badge = document.getElementById('syncBadge');
     const text = document.getElementById('syncText');
     if (!badge || !text) return;
+  
     badge.classList.remove('sync-local', 'sync-ready', 'sync-syncing', 'sync-synced', 'sync-error');
-    if (status === 'local') { badge.classList.add('sync-local'); text.textContent = 'Locale'; }
-    else if (status === 'ready') { badge.classList.add('sync-ready'); text.textContent = 'Pronto'; }
-    else if (status === 'syncing') { badge.classList.add('sync-syncing'); text.textContent = 'Sync…'; }
-    else if (status === 'synced') { badge.classList.add('sync-synced'); text.textContent = extraText ? `Sync OK (${extraText})` : 'Sync OK'; }
-    else if (status === 'error') { badge.classList.add('sync-error'); text.textContent = extraText ? `Errore (${extraText})` : 'Errore'; }
+  
+    if (status === 'local') {
+      badge.classList.add('sync-local');
+      text.textContent = 'Locale';
+    } else if (status === 'ready') {
+      badge.classList.add('sync-ready');
+      text.textContent = 'Pronto';
+    } else if (status === 'syncing') {
+      badge.classList.add('sync-syncing');
+      text.textContent = 'Sync…';
+    } else if (status === 'synced') {
+      badge.classList.add('sync-synced');
+      text.textContent = extraText ? `Sync OK (${extraText})` : 'Sync OK';
+    } else if (status === 'error') {
+      badge.classList.add('sync-error');
+      text.textContent = extraText ? `Errore (${extraText})` : 'Errore';
+    }
 }
 
 function injectNoteAndDeleteControls() {
+    // textarea note
     if (!document.getElementById('noteInput')) {
       const inputSection = document.querySelector('.input-section');
       if (inputSection) {
@@ -180,14 +203,18 @@ function injectNoteAndDeleteControls() {
         inputSection.insertBefore(wrap, document.querySelector('.form-actions'));
       }
     }
+  
+    // bottone cestino
     const actions = document.querySelector('.form-actions');
     if (actions && !document.getElementById('btnDeleteMonth')) {
       actions.style.gap = '1rem';
+  
       const delBtn = document.createElement('button');
       delBtn.id = 'btnDeleteMonth';
       delBtn.className = 'btn btn-danger';
       delBtn.type = 'button';
       delBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Cancella mese';
+  
       actions.appendChild(delBtn);
     }
 }
@@ -195,6 +222,7 @@ function injectNoteAndDeleteControls() {
 function injectTableVariationColumn() {
     const table = document.getElementById('salaryTable');
     if (!table) return;
+  
     const headRow = table.querySelector('thead tr');
     if (headRow && !headRow.querySelector('th[data-col="var"]')) {
       const th = document.createElement('th');
@@ -207,6 +235,8 @@ function injectTableVariationColumn() {
 function injectKpiIcons() {
     const cards = document.querySelectorAll('.kpi-card');
     if (!cards || !cards.length) return;
+  
+    // Aggiunto fa-wand-magic-sparkles per la Proiezione Annua
     const icons = ['fa-calendar-check', 'fa-chart-line', 'fa-trophy', 'fa-wand-magic-sparkles', 'fa-list-check'];
     cards.forEach((card, idx) => {
       if (card.querySelector('.kpi-icon')) return;
@@ -248,6 +278,9 @@ function isSmallScreen() {
     return window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
 }
 
+// ========================================
+// CARICAMENTO DATI
+// ========================================
 async function loadData() {
     let loadedFromGitHub = false;
     const token = localStorage.getItem("gh_token");
@@ -264,7 +297,7 @@ async function loadData() {
             if (apiResp.ok) {
                 state = await apiResp.json();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API");
+                console.log("✅ Dati caricati da GitHub API (No Cache)");
                 loadedFromGitHub = true;
             }
         }
@@ -298,6 +331,9 @@ async function loadData() {
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
+// ========================================
+// SALVATAGGIO DATI
+// ========================================
 function saveData() {
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
     syncToGitHub();
@@ -331,6 +367,9 @@ async function syncToGitHub() {
     }
 }
 
+// ========================================
+// INIZIALIZZAZIONE UI
+// ========================================
 function setInitialDate() {
     if (!localStorage.getItem(CONFIG.storageKey)) {
         const now = new Date();
@@ -342,6 +381,7 @@ function setInitialDate() {
 function initYearSelectors() {
     const picker = document.getElementById('yearPicker');
     picker.innerHTML = '';
+    
     const cmp1 = document.getElementById('cmpYear1');
     const cmp2 = document.getElementById('cmpYear2');
     cmp1.innerHTML = '';
@@ -394,13 +434,16 @@ function updateYtdBadge() {
     const currYear = state.view.year;
     const currYearData = state.salaries[currYear] || {};
     
+    // Trova i mesi che hanno dati validi per l'anno attualmente visualizzato
     const filledMonths = MENSILITA.map(m => m.id).filter(mId => getAmount(currYearData[mId]) !== null);
     
+    // Se non ci sono mesi compilati quest'anno, nascondi
     if (filledMonths.length === 0) {
         badge.style.display = 'none';
         return;
     }
 
+    // Calcola il totale dei mesi compilati per l'anno attuale
     const currTotal = filledMonths.reduce((sum, mId) => sum + getAmount(currYearData[mId]), 0);
 
     let bestPastTotal = 0;
@@ -408,9 +451,10 @@ function updateYtdBadge() {
 
     Object.keys(state.salaries).forEach(yStr => {
         const y = parseInt(yStr);
-        if (y >= currYear) return; 
+        if (y >= currYear) return; // Paragona solo agli anni precedenti a quello selezionato
         
         const pastData = state.salaries[y] || {};
+        
         let pastTotal = 0;
         let hasValidData = false;
         
@@ -422,6 +466,7 @@ function updateYtdBadge() {
             }
         });
 
+        // Contiamo questo anno passato solo se ha almeno un dato tra i mesi di interesse
         if (hasValidData && pastTotal > bestPastTotal) {
             bestPastTotal = pastTotal;
             bestPastYear = y;
@@ -472,6 +517,9 @@ function updateYtdBadge() {
     badge.style.display = 'inline-flex';
 }
 
+// ========================================
+// FORMATTAZIONE VALUTA INPUT
+// ========================================
 function setupCurrencyFormatter() {
     const displayInput = document.getElementById('salaryDisplay');
     const hiddenInput = document.getElementById('salaryInput');
@@ -481,10 +529,15 @@ function setupCurrencyFormatter() {
         value = value.replace(/\./g, ',');
         
         const parts = value.split(',');
-        if (parts.length > 2) value = parts[0] + ',' + parts.slice(1).join('');
+        if (parts.length > 2) {
+            value = parts[0] + ',' + parts.slice(1).join('');
+        }
+        
         if (value.includes(',')) {
             const dec = value.split(',')[1];
-            if (dec.length > 2) value = value.split(',')[0] + ',' + dec.substring(0, 2);
+            if (dec.length > 2) {
+                value = value.split(',')[0] + ',' + dec.substring(0, 2);
+            }
         }
 
         let numForFormatting = value.replace(/,/g, '.');
@@ -505,9 +558,14 @@ function setupCurrencyFormatter() {
         }
     });
 
-    displayInput.addEventListener('focus', function() { this.select(); });
+    displayInput.addEventListener('focus', function() {
+        this.select();
+    });
 }
 
+// ========================================
+// RENDERING
+// ========================================
 function renderMonthGrid() {
     const grid = document.getElementById('monthGrid');
     const now = new Date();
@@ -517,8 +575,10 @@ function renderMonthGrid() {
         div.className = 'month-box';
         if (m.extra) div.classList.add('extra');
         if (state.view.monthId === m.id) div.classList.add('is-selected');
+        
         if (getAmount(state.salaries[state.view.year]?.[m.id]) !== null) div.classList.add('has-data');
         if (state.view.year === now.getFullYear() && (now.getMonth() + 1).toString().padStart(2, '0') === m.id) div.classList.add('is-current-glob');
+        
         div.textContent = m.name;
         div.onclick = () => { state.view.monthId = m.id; updateUI(); };
         grid.appendChild(div);
@@ -550,33 +610,52 @@ function renderForm() {
 
 function renderKPIs() {
     const yearData = state.salaries[state.view.year] || {};
-    const values = Object.values(yearData).map(e => getAmount(e)).filter(v => typeof v === 'number');
+    const values = Object.values(yearData)
+      .map(e => getAmount(e))
+      .filter(v => typeof v === 'number');
+  
     const total = values.reduce((a, b) => a + b, 0);
     const avg = values.length ? (total / 12) : 0;
     
+    // --- Calcolo Proiezione Annua ---
     const avgPerPaycheck = values.length ? (total / values.length) : 0;
-    let typicalMonths = 13;
+    let typicalMonths = 13; // Valore di default in Italia (12 mesi + 13esima)
     let maxPastMonths = 0;
+    
+    // Controlla il passato per capire se prendi 13 o 14 mensilità abitualmente
     Object.keys(state.salaries).forEach(y => {
         if (parseInt(y) < state.view.year) {
             const pastVals = Object.values(state.salaries[y]).map(e => getAmount(e)).filter(v => typeof v === 'number');
             if (pastVals.length > maxPastMonths) maxPastMonths = pastVals.length;
         }
     });
+    // Limita tra 12 e 14 per stare su numeri realistici
     if (maxPastMonths >= 12 && maxPastMonths <= 14) typicalMonths = maxPastMonths;
 
     let forecast = total;
     if (values.length > 0 && values.length < typicalMonths) {
+        // Aggiunge al totale accumulato finora la stima per i mesi mancanti
         forecast = total + (avgPerPaycheck * (typicalMonths - values.length));
     }
+    // --------------------------------
   
-    document.getElementById('kpiTotal').textContent = total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-    document.getElementById('kpiAvg').textContent = avg.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-    document.getElementById('kpiMax').textContent = values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
+    document.getElementById('kpiTotal').textContent =
+      total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+  
+    document.getElementById('kpiAvg').textContent =
+      avg.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+  
+    document.getElementById('kpiMax').textContent =
+      values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
+
+    // Nuovo KPI Proiezione
     const kpiForecastEl = document.getElementById('kpiForecast');
     if (kpiForecastEl) {
-        kpiForecastEl.textContent = values.length > 0 ? forecast.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : '-';
+        kpiForecastEl.textContent = values.length > 0 
+            ? forecast.toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) 
+            : '-';
     }
+  
     document.getElementById('kpiCount').textContent = `${values.length} / 14`;
 }
 
@@ -600,14 +679,14 @@ function renderTable() {
   
       if (!m.extra && amount !== null) prevAmount = amount;
   
-      const noteHtml = note
-        ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; font-style: italic;"><i class="fa-solid fa-note-sticky" style="margin-right:4px;"></i>${note}</div>`
+      const noteIcon = note
+        ? `<i class="fa-solid fa-note-sticky" title="${note.replaceAll('"','&quot;')}" style="margin-left:8px;color:var(--accent)"></i>`
         : '';
   
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${m.full}</td>
-        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteHtml}</td>
+        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteIcon}</td>
         <td>${varHtml}</td>
         <td>${amount !== null ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
       `;
@@ -619,13 +698,15 @@ function updateCharts() {
     const styles = getComputedStyle(document.body);
     const accentColor = styles.getPropertyValue('--primary').trim();
     const mutedColor = styles.getPropertyValue('--text-muted').trim() || '#6c757d';
+    const successColor = styles.getPropertyValue('--success').trim();
+    const dangerColor = '#ef233c'; // Rosso per delta negativi
 
+    // --- 1. Monthly Chart ---
     const ctxM = document.getElementById('monthlyChart').getContext('2d');
     const mData = MENSILITA.map(m => {
         const a = getAmount(state.salaries[state.view.year]?.[m.id]);
         return a !== null ? a : null;
     });
-    const mNotes = MENSILITA.map(m => getNote(state.salaries[state.view.year]?.[m.id]));
     
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
@@ -646,39 +727,36 @@ function updateCharts() {
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             spanGaps: false,
-            scales: { y: { beginAtZero: true } },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let val = context.parsed.y;
-                            return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
-                        },
-                        afterLabel: function(context) {
-                            const note = mNotes[context.dataIndex];
-                            if (note) return `\nNota: ${note}`;
-                            return null;
-                        }
-                    }
-                }
-            }
+            scales: { y: { beginAtZero: true } }
         }
     });
 
+    // --- 2. Yearly Chart (Filtered & Delta in Tooltip) ---
     const canvasY = document.getElementById('yearlyChart'); 
     const ctxY = canvasY.getContext('2d');
+    
     let lastYearWithData = CONFIG.startYear;
     Object.keys(state.salaries).forEach(y => {
-        if (Object.keys(state.salaries[y]).length > 0) lastYearWithData = Math.max(lastYearWithData, parseInt(y));
+        if (Object.keys(state.salaries[y]).length > 0) {
+            lastYearWithData = Math.max(lastYearWithData, parseInt(y));
+        }
     });
     const maxYearToShow = Math.max(lastYearWithData, state.view.year, new Date().getFullYear());
+
     const years = [];
     const totals = [];
-    const currentViewYearTotal = Object.values(state.salaries[state.view.year] || {}).map(e => getAmount(e)).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+    
+    const currentViewYearTotal = Object.values(state.salaries[state.view.year] || {})
+        .map(e => getAmount(e))
+        .filter(v => typeof v === 'number')
+        .reduce((a, b) => a + b, 0);
 
     for (let y = CONFIG.startYear; y <= maxYearToShow; y++) {
         years.push(y);
-        const yTot = Object.values(state.salaries[y] || {}).map(e => getAmount(e)).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+        const yTot = Object.values(state.salaries[y] || {})
+            .map(e => getAmount(e))
+            .filter(v => typeof v === 'number')
+            .reduce((a, b) => a + b, 0);
         totals.push(yTot);
     }
 
@@ -689,6 +767,7 @@ function updateCharts() {
     innerContainer.style.width = `${totalWidth}px`;
     
     if (yChart) yChart.destroy();
+    
     yChart = new Chart(ctxY, {
         type: 'bar',
         data: {
@@ -710,13 +789,16 @@ function updateCharts() {
                     callbacks: {
                         label: function(context) {
                             let val = context.parsed.y;
-                            return `Totale: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val)}`;
+                            let label = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
+                            return `Totale: ${label}`;
                         },
                         afterLabel: function(context) {
                             const year = context.label;
                             if (parseInt(year) === state.view.year) return "Anno Selezionato";
+                            
                             const diff = context.parsed.y - currentViewYearTotal;
-                            return `Vs ${state.view.year}: ${new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', signDisplay: "always" }).format(diff)}`;
+                            const diffStr = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', signDisplay: "always" }).format(diff);
+                            return `Vs ${state.view.year}: ${diffStr}`;
                         }
                     }
                 }
@@ -727,36 +809,60 @@ function updateCharts() {
     
     setTimeout(() => {
         const idx = years.indexOf(state.view.year);
-        if (idx !== -1 && scrollContainer) scrollContainer.scrollLeft = (idx * minBarWidth) - (scrollContainer.clientWidth / 2) + (minBarWidth / 2);
+        if (idx !== -1 && scrollContainer) {
+            scrollContainer.scrollLeft = (idx * minBarWidth) - (scrollContainer.clientWidth / 2) + (minBarWidth / 2);
+        }
     }, 100);
 
+    // --- 3. Comparison Chart (Delta in X-Axis Labels) ---
     const ctxC = document.getElementById('comparisonChart');
     if (ctxC) {
         const y1 = parseInt(document.getElementById('cmpYear1').value) || state.view.year;
         const y2 = parseInt(document.getElementById('cmpYear2').value) || (state.view.year - 1);
+
         const d1 = MENSILITA.map(m => getAmount(state.salaries[y1]?.[m.id]) || 0);
         const d2 = MENSILITA.map(m => getAmount(state.salaries[y2]?.[m.id]) || 0);
         
         const showDeltaOnLabels = !isSmallScreen();
+        
         const labelsWithDelta = MENSILITA.map((m, i) => {
             const v1 = d1[i];
             const v2 = d2[i];
             if (!showDeltaOnLabels) return m.name;
             if (v1 === 0 && v2 === 0) return m.name; 
+            
             const diff = v1 - v2;
             const sign = diff > 0 ? '+' : '';
-            const diffFmt = Math.abs(diff) >= 1000 ? (diff/1000).toFixed(1) + 'k' : Math.round(diff);
+            const diffFmt = Math.abs(diff) >= 1000 
+                ? (diff/1000).toFixed(1) + 'k' 
+                : Math.round(diff);
+            
             return [m.name, `(${sign}${diffFmt})`]; 
         });
 
         if (cChart) cChart.destroy();
+        
         cChart = new Chart(ctxC.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: labelsWithDelta,
                 datasets: [
-                    { label: `${y1}`, data: d1, backgroundColor: accentColor, borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 },
-                    { label: `${y2}`, data: d2, backgroundColor: mutedColor, borderRadius: 4, barPercentage: 0.6, categoryPercentage: 0.8 }
+                    {
+                        label: `${y1}`,
+                        data: d1,
+                        backgroundColor: accentColor,
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    },
+                    {
+                        label: `${y2}`,
+                        data: d2,
+                        backgroundColor: mutedColor,
+                        borderRadius: 4,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    }
                 ]
             },
             options: {
@@ -764,8 +870,17 @@ function updateCharts() {
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 scales: {
-                    x: { ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 0 } },
-                    y: { beginAtZero: true, ticks: { callback: v => v >= 1000 ? '€ ' + v/1000 + 'k' : '€ ' + v } }
+                    x: {
+                        ticks: {
+                            font: { size: 10 },
+                            autoSkip: false,
+                            maxRotation: 0
+                        }
+                    },
+                    y: { 
+                        beginAtZero: true,
+                        ticks: { callback: v => v >= 1000 ? '€ ' + v/1000 + 'k' : '€ ' + v }
+                    }
                 },
                 plugins: {
                     tooltip: {
@@ -790,6 +905,9 @@ function updateCharts() {
     }
 }
 
+// ========================================
+// EVENTI E SALVATAGGIO
+// ========================================
 function setupEventListeners() {
     document.getElementById('btnSave').onclick = () => {
         const amountStr = document.getElementById('salaryInput').value;
