@@ -679,14 +679,17 @@ function renderTable() {
   
       if (!m.extra && amount !== null) prevAmount = amount;
   
-      const noteIcon = note
-        ? `<i class="fa-solid fa-note-sticky" title="${note.replaceAll('"','&quot;')}" style="margin-left:8px;color:var(--accent)"></i>`
+      const noteHtml = note
+        ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; font-style: italic; background: var(--bg); padding: 4px 8px; border-radius: 4px; border-left: 2px solid var(--primary);"><i class="fa-solid fa-note-sticky" style="margin-right:6px; color: var(--primary);"></i>${note}</div>`
         : '';
   
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${m.full}</td>
-        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteIcon}</td>
+        <td>
+            ${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}
+            ${noteHtml}
+        </td>
         <td>${varHtml}</td>
         <td>${amount !== null ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
       `;
@@ -707,6 +710,7 @@ function updateCharts() {
         const a = getAmount(state.salaries[state.view.year]?.[m.id]);
         return a !== null ? a : null;
     });
+    const mNotes = MENSILITA.map(m => getNote(state.salaries[state.view.year]?.[m.id]));
     
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
@@ -727,7 +731,25 @@ function updateCharts() {
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             spanGaps: false,
-            scales: { y: { beginAtZero: true } }
+            scales: { y: { beginAtZero: true } },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let val = context.parsed.y;
+                            return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
+                        },
+                        afterLabel: function(context) {
+                            const idx = context.dataIndex;
+                            const note = mNotes[idx];
+                            if (note) {
+                                return `\nNota: ${note}`;
+                            }
+                            return null;
+                        }
+                    }
+                }
+            }
         }
     });
 
