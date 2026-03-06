@@ -13,7 +13,7 @@
     <!-- Chart.js Plugin Datalabels -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -103,7 +103,7 @@
     <!-- Grafici -->
     <div class="charts-container">
         
-        <!-- 1. Grafico Mensile -->
+        <!-- 1. Grafico Mensile (A tutto schermo) -->
         <div class="card chart-card">
             <h3>Andamento Mensile</h3>
             <div class="chart-wrapper">
@@ -111,26 +111,29 @@
             </div>
         </div>
 
-        <!-- 2. Grafico Storico Totale -->
-        <div class="card chart-card">
-            <h3>Confronto Storico Totale</h3>
-            <div class="chart-wrapper-scrollable">
-                <div class="chart-scroll-inner">
-                    <canvas id="yearlyChart"></canvas>
+        <!-- Griglia per affiancare gli altri due grafici -->
+        <div class="charts-grid">
+            <!-- 2. Grafico Storico Totale -->
+            <div class="card chart-card">
+                <h3>Confronto Storico Totale</h3>
+                <div class="chart-wrapper-scrollable">
+                    <div class="chart-scroll-inner">
+                        <canvas id="yearlyChart"></canvas>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- 3. Grafico Confronto Diretto -->
-        <div class="card chart-card">
-            <div class="card-header-flex">
-                <h3 style="margin:0">Confronto Diretto</h3>
-                <div class="compare-controls">
-                    <select id="cmpYear1"></select> <span style="font-size:0.9rem; color:var(--text-muted)">vs</span> <select id="cmpYear2"></select>
+            <!-- 3. Grafico Confronto Diretto -->
+            <div class="card chart-card">
+                <div class="card-header-flex">
+                    <h3 style="margin:0">Confronto Diretto</h3>
+                    <div class="compare-controls">
+                        <select id="cmpYear1"></select> <span style="font-size:0.9rem; color:var(--text-muted)">vs</span> <select id="cmpYear2"></select>
+                    </div>
                 </div>
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="comparisonChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -158,6 +161,6 @@
 
 <div id="toast" class="toast">Messaggio</div>
 
-<script src="script.js?v=10"></script>
+<script src="script.js?v=11"></script>
 </body>
 </html>
