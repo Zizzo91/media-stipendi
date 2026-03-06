@@ -34,8 +34,7 @@ const MENSILITA = [
 let state = {
     view: { year: 2026, monthId: '01' },
     salaries: {},
-    theme: 'light',
-    lastUpdated: Date.now()
+    theme: 'light'
 };
 
 let mChart = null; // Grafico Mensile
@@ -285,13 +284,6 @@ function isSmallScreen() {
 async function loadData() {
     let loadedFromGitHub = false;
     const token = localStorage.getItem("gh_token");
-    
-    // Leggi subito il dato locale per eventuale comparazione
-    const localSaved = localStorage.getItem(CONFIG.storageKey);
-    let localState = null;
-    if (localSaved) {
-        try { localState = JSON.parse(localSaved); } catch (e) {}
-    }
 
     try {
         if (token) {
@@ -303,19 +295,9 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                const ghState = await apiResp.json();
-                
-                const ghTime = ghState.lastUpdated || 0;
-                const locTime = localState ? (localState.lastUpdated || 0) : 0;
-                
-                if (ghTime >= locTime || !localState) {
-                    state = ghState;
-                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                    console.log("✅ Dati caricati da GitHub API (No Cache)");
-                } else {
-                    state = localState;
-                    console.log("✅ Dati locali più recenti mantenuti (GitHub era in cache)");
-                }
+                state = await apiResp.json();
+                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                console.log("✅ Dati caricati da GitHub API (No Cache)");
                 loadedFromGitHub = true;
             }
         }
@@ -325,19 +307,9 @@ async function loadData() {
             const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
             const response = await fetch(url);
             if (response.ok) {
-                const ghState = await response.json();
-                
-                const ghTime = ghState.lastUpdated || 0;
-                const locTime = localState ? (localState.lastUpdated || 0) : 0;
-                
-                if (ghTime >= locTime || !localState) {
-                    state = ghState;
-                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                    console.log("✅ Dati caricati da GitHub Raw");
-                } else {
-                    state = localState;
-                    console.log("✅ Dati locali più recenti mantenuti");
-                }
+                state = await response.json();
+                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                console.log("✅ Dati caricati da GitHub Raw");
                 loadedFromGitHub = true;
             }
         }
@@ -345,13 +317,17 @@ async function loadData() {
         console.warn("GitHub offline o errore rete, uso dati locali:", e); 
     }
 
-    if (!loadedFromGitHub && localState) {
-        state = localState;
+    if (!loadedFromGitHub) {
+        const saved = localStorage.getItem(CONFIG.storageKey);
+        if (saved) {
+            try {
+                state = JSON.parse(saved);
+            } catch (e) {}
+        }
     }
 
     if (!state.view) state.view = { year: 2026, monthId: '01' };
     if (!state.salaries) state.salaries = {};
-    if (!state.lastUpdated) state.lastUpdated = Date.now();
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
@@ -359,9 +335,7 @@ async function loadData() {
 // SALVATAGGIO DATI
 // ========================================
 function saveData() {
-    state.lastUpdated = Date.now();
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-    console.log("💾 Salvataggio in locale:", JSON.stringify(state)); // Debug utile
     syncToGitHub();
 }
 
@@ -379,20 +353,13 @@ async function syncToGitHub() {
             if (getResp.ok) sha = (await getResp.json()).sha;
         } catch (e) {}
 
-        const finalJSON = JSON.stringify(state, null, 2);
-        console.log("🚀 Payload inviato a GitHub:", finalJSON);
-        
-        const contentBase64 = window.btoa(unescape(encodeURIComponent(finalJSON)));
-        
-        const putResp = await fetch(apiUrl, {
+        const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+        await fetch(apiUrl, {
             method: 'PUT',
             headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ message: "Update " + new Date().toISOString().slice(0, 10), content: contentBase64, sha: sha })
         });
-        
-        if (!putResp.ok) throw new Error("Errore API GitHub: " + putResp.status);
-        
-        console.log("✅ Salvato su GitHub con successo");
+        console.log("✅ Salvato su GitHub");
         setSyncStatus('synced', new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
     } catch (error) { 
         console.error("Errore Sync:", error);
@@ -712,17 +679,14 @@ function renderTable() {
   
       if (!m.extra && amount !== null) prevAmount = amount;
   
-      const noteHtml = note
-        ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; font-style: italic; background: var(--bg); padding: 4px 8px; border-radius: 4px; border-left: 2px solid var(--primary);"><i class="fa-solid fa-note-sticky" style="margin-right:6px; color: var(--primary);"></i>${note}</div>`
+      const noteIcon = note
+        ? `<i class="fa-solid fa-note-sticky" title="${note.replaceAll('"','&quot;')}" style="margin-left:8px;color:var(--accent)"></i>`
         : '';
   
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${m.full}</td>
-        <td>
-            ${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}
-            ${noteHtml}
-        </td>
+        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteIcon}</td>
         <td>${varHtml}</td>
         <td>${amount !== null ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
       `;
@@ -743,7 +707,6 @@ function updateCharts() {
         const a = getAmount(state.salaries[state.view.year]?.[m.id]);
         return a !== null ? a : null;
     });
-    const mNotes = MENSILITA.map(m => getNote(state.salaries[state.view.year]?.[m.id]));
     
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
@@ -764,25 +727,7 @@ function updateCharts() {
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             spanGaps: false,
-            scales: { y: { beginAtZero: true } },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let val = context.parsed.y;
-                            return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
-                        },
-                        afterLabel: function(context) {
-                            const idx = context.dataIndex;
-                            const note = mNotes[idx];
-                            if (note) {
-                                return `\nNota: ${note}`;
-                            }
-                            return null;
-                        }
-                    }
-                }
-            }
+            scales: { y: { beginAtZero: true } }
         }
     });
 
