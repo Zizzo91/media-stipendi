@@ -96,8 +96,31 @@ function injectEnhancementStyles() {
       .sync-syncing .sync-dot{background:var(--accent)}
       .sync-synced .sync-dot{background:var(--success)}
       .sync-error .sync-dot{background:var(--danger)}
-      .note-wrap{margin-top:.75rem;text-align:left}
-      #noteInput{width:100%;min-height:64px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--bg);color:var(--text)}
+      .note-wrap{margin-top:1rem;text-align:left}
+      #noteInput{
+        width:100%;
+        min-height:72px;
+        resize:vertical;
+        border:1px solid var(--border);
+        border-radius:8px;
+        padding:.75rem;
+        background:var(--bg);
+        color:var(--text);
+        font-family: inherit;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+      #noteInput:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+      }
+      #noteInput::placeholder {
+        color: var(--text-muted);
+        font-style: italic;
+        opacity: 0.8;
+      }
       .btn-danger{background:var(--danger);color:#fff;flex-grow:1}
       .btn-secondary{background:var(--border);color:var(--text);flex-grow:1}
       .var-badge{display:inline-block;padding:.15rem .45rem;border-radius:999px;font-weight:700;font-size:.85rem;border:1px solid var(--border)}
@@ -172,10 +195,10 @@ function injectNoteAndDeleteControls() {
         const wrap = document.createElement('div');
         wrap.className = 'note-wrap';
         wrap.innerHTML = `
-          <label for="noteInput" style="display:block;margin-bottom:.35rem;color:var(--text-muted);font-weight:700;font-size:.8rem;text-transform:uppercase">
-            Nota (opzionale)
+          <label for="noteInput" style="display:block;margin-bottom:.5rem;color:var(--text-muted);font-weight:600;font-size:.85rem;">
+            <i class="fa-solid fa-pen-to-square" style="margin-right:4px;"></i> Note aggiuntive
           </label>
-          <textarea id="noteInput" placeholder="Es. Bonus, aumento, straordinari..."></textarea>
+          <textarea id="noteInput" placeholder="Es. Bonus, rimborsi, straordinari..."></textarea>
         `;
         inputSection.insertBefore(wrap, document.querySelector('.form-actions'));
       }
