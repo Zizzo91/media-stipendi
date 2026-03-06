@@ -10,10 +10,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js Plugin Datalabels (Opzionale per etichette avanzate, ma usiamo base Chart.js per leggerezza) -->
+    <!-- Chart.js Plugin Datalabels -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -64,7 +64,7 @@
         <div class="input-section">
             <div class="input-container">
                 <span style="font-size: 1.5rem; margin-right: 10px; color: var(--text-muted);">€</span>
-                <input type="text" inputmode="decimal" id="salaryDisplay" placeholder="0,00" style="width: 250px; border: none; border-bottom: 3px solid var(--primary); background: transparent; color: var(--text); text-align: center; font-weight: 700; outline: none; font-size: inherit; font-family: inherit;">
+                <input type="text" inputmode="decimal" id="salaryDisplay" placeholder="0,00">
                 <input type="hidden" id="salaryInput">
             </div>
             
@@ -100,7 +100,7 @@
         </div>
     </div>
 
-    <!-- Grafici (Stack Verticale) -->
+    <!-- Grafici -->
     <div class="charts-container">
         
         <!-- 1. Grafico Mensile -->
@@ -111,7 +111,7 @@
             </div>
         </div>
 
-        <!-- 2. Grafico Storico Totale (Spostato qui sotto richiesta) -->
+        <!-- 2. Grafico Storico Totale -->
         <div class="card chart-card">
             <h3>Confronto Storico Totale</h3>
             <div class="chart-wrapper-scrollable">
@@ -158,6 +158,6 @@
 
 <div id="toast" class="toast">Messaggio</div>
 
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 </body>
 </html>
