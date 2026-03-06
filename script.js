@@ -34,7 +34,8 @@ const MENSILITA = [
 let state = {
     view: { year: 2026, monthId: '01' },
     salaries: {},
-    theme: 'light'
+    theme: 'light',
+    lastUpdated: 0
 };
 
 let mChart = null; // Grafico Mensile
@@ -219,34 +220,6 @@ function injectNoteAndDeleteControls() {
     }
 }
 
-function injectTableVariationColumn() {
-    const table = document.getElementById('salaryTable');
-    if (!table) return;
-  
-    const headRow = table.querySelector('thead tr');
-    if (headRow && !headRow.querySelector('th[data-col="var"]')) {
-      const th = document.createElement('th');
-      th.setAttribute('data-col', 'var');
-      th.textContent = 'Var %';
-      headRow.insertBefore(th, headRow.children[2] || null); 
-    }
-}
-
-function injectKpiIcons() {
-    const cards = document.querySelectorAll('.kpi-card');
-    if (!cards || !cards.length) return;
-  
-    // Aggiunto fa-wand-magic-sparkles per la Proiezione Annua
-    const icons = ['fa-calendar-check', 'fa-chart-line', 'fa-trophy', 'fa-wand-magic-sparkles', 'fa-list-check'];
-    cards.forEach((card, idx) => {
-      if (card.querySelector('.kpi-icon')) return;
-      const div = document.createElement('div');
-      div.className = 'kpi-icon';
-      div.innerHTML = `<i class="fa-solid ${icons[idx] || 'fa-circle-info'}"></i>`;
-      card.insertBefore(div, card.firstChild);
-    });
-}
-
 function normalizeEntry(entry) {
     if (entry === null || entry === undefined) return null;
     if (typeof entry === 'number') return { amount: entry, note: '' };
@@ -284,6 +257,13 @@ function isSmallScreen() {
 async function loadData() {
     let loadedFromGitHub = false;
     const token = localStorage.getItem("gh_token");
+    
+    // Leggi subito il dato locale per eventuale comparazione
+    const localSaved = localStorage.getItem(CONFIG.storageKey);
+    let localState = null;
+    if (localSaved) {
+        try { localState = JSON.parse(localSaved); } catch (e) {}
+    }
 
     try {
         if (token) {
@@ -295,9 +275,20 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                state = await apiResp.json();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API (No Cache)");
+                const ghState = await apiResp.json();
+                
+                // Previene che GitHub sovrascriva modifiche locali fresche se l'API serve una copia in cache
+                const ghTime = ghState.lastUpdated || 0;
+                const locTime = localState ? (localState.lastUpdated || 0) : 0;
+                
+                if (ghTime >= locTime || !localState) {
+                    state = ghState;
+                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                    console.log("✅ Dati caricati da GitHub API (No Cache)");
+                } else {
+                    state = localState;
+                    console.log("✅ Dati locali più recenti mantenuti (GitHub era in cache)");
+                }
                 loadedFromGitHub = true;
             }
         }
@@ -307,9 +298,19 @@ async function loadData() {
             const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
             const response = await fetch(url);
             if (response.ok) {
-                state = await response.json();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub Raw");
+                const ghState = await response.json();
+                
+                const ghTime = ghState.lastUpdated || 0;
+                const locTime = localState ? (localState.lastUpdated || 0) : 0;
+                
+                if (ghTime >= locTime || !localState) {
+                    state = ghState;
+                    localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                    console.log("✅ Dati caricati da GitHub Raw");
+                } else {
+                    state = localState;
+                    console.log("✅ Dati locali più recenti mantenuti");
+                }
                 loadedFromGitHub = true;
             }
         }
@@ -317,17 +318,13 @@ async function loadData() {
         console.warn("GitHub offline o errore rete, uso dati locali:", e); 
     }
 
-    if (!loadedFromGitHub) {
-        const saved = localStorage.getItem(CONFIG.storageKey);
-        if (saved) {
-            try {
-                state = JSON.parse(saved);
-            } catch (e) {}
-        }
+    if (!loadedFromGitHub && localState) {
+        state = localState;
     }
 
     if (!state.view) state.view = { year: 2026, monthId: '01' };
     if (!state.salaries) state.salaries = {};
+    if (!state.lastUpdated) state.lastUpdated = 0;
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
@@ -335,6 +332,7 @@ async function loadData() {
 // SALVATAGGIO DATI
 // ========================================
 function saveData() {
+    state.lastUpdated = new Date().getTime();
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
     syncToGitHub();
 }
@@ -605,7 +603,9 @@ function renderForm() {
       displayInput.value = '';
     }
   
-    if (noteInput) noteInput.value = note || '';
+    if (noteInput) {
+        noteInput.value = note || '';
+    }
 }
 
 function renderKPIs() {
@@ -679,14 +679,18 @@ function renderTable() {
   
       if (!m.extra && amount !== null) prevAmount = amount;
   
-      const noteIcon = note
-        ? `<i class="fa-solid fa-note-sticky" title="${note.replaceAll('"','&quot;')}" style="margin-left:8px;color:var(--accent)"></i>`
+      // Mostra la nota chiaramente sotto l'importo per renderla visibile senza hover
+      const noteHtml = note
+        ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; font-style: italic;"><i class="fa-solid fa-note-sticky" style="margin-right:4px;"></i>${note}</div>`
         : '';
   
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${m.full}</td>
-        <td>${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}${noteIcon}</td>
+        <td>
+            ${amount !== null ? amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '-'}
+            ${noteHtml}
+        </td>
         <td>${varHtml}</td>
         <td>${amount !== null ? '<i class="fa-solid fa-check" style="color:var(--success)"></i>' : ''}</td>
       `;
@@ -707,6 +711,7 @@ function updateCharts() {
         const a = getAmount(state.salaries[state.view.year]?.[m.id]);
         return a !== null ? a : null;
     });
+    const mNotes = MENSILITA.map(m => getNote(state.salaries[state.view.year]?.[m.id]));
     
     if (mChart) mChart.destroy();
     mChart = new Chart(ctxM, {
@@ -727,7 +732,25 @@ function updateCharts() {
             maintainAspectRatio: false,
             interaction: { intersect: false, mode: 'index' },
             spanGaps: false,
-            scales: { y: { beginAtZero: true } }
+            scales: { y: { beginAtZero: true } },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let val = context.parsed.y;
+                            return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(val);
+                        },
+                        afterLabel: function(context) {
+                            const idx = context.dataIndex;
+                            const note = mNotes[idx];
+                            if (note) {
+                                return `\nNota: ${note}`;
+                            }
+                            return null;
+                        }
+                    }
+                }
+            }
         }
     });
 
