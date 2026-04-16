@@ -367,7 +367,7 @@ async function syncToGitHub() {
             body: JSON.stringify({
                 message: "Update " + new Date().toISOString().slice(0, 10),
                 content: contentBase64,
-                sha: sha
+                sha: sha || undefined })
             })
         });
 
