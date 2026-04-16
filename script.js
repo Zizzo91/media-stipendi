@@ -356,9 +356,12 @@ async function syncToGitHub() {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
         let sha = cachedFileSHA;
         try {
-            const getResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-            const d = await getResp.json().catch(()=>({})); if (getResp.ok && d.sha) { sha = d.sha; cachedFileSHA = d.sha; }
-        } catch (e) {}
+            const treeUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/git/trees/HEAD`;
+            const treeResp = await fetch(treeUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+            const treeData = await treeResp.json().catch(()=>({}));
+            const fileEntry = (treeData.tree || []).find(f => f.path === GH_CONFIG.file);
+            if (treeResp.ok && fileEntry && fileEntry.sha) { sha = fileEntry.sha; cachedFileSHA = fileEntry.sha; }
+        } catch (e) { console.error('SHA tree fetch error:', e); }
         if (!sha) { setSyncStatus('error', 'SHA non trovato'); showSyncToast('\u274c SHA non trovato, ricarica la pagina'); return; }
 
         const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
