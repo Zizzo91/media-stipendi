@@ -299,8 +299,7 @@ async function loadData() {
                 }
             });
             if (apiResp.ok) {
-                const meta = await apiResp.json(); cachedFileSHA = meta.sha || null; state = JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/
-/g,'')))));
+                const meta = await apiResp.json(); cachedFileSHA = meta.sha || null; state = JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\s/g,'')))));
                 migrateSalaries();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
                 console.log("✅ Dati caricati da GitHub API"); fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).then(m => { if (m && m.sha) cachedFileSHA = m.sha; });
