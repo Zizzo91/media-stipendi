@@ -359,6 +359,7 @@ async function syncToGitHub() {
             const getResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });
             const d = await getResp.json().catch(()=>({})); if (getResp.ok && d.sha) { sha = d.sha; cachedFileSHA = d.sha; }
         } catch (e) {}
+        if (!sha) { setSyncStatus('error', 'SHA non trovato'); showSyncToast('\u274c SHA non trovato, ricarica la pagina'); return; }
 
         const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
         const putResp = await fetch(apiUrl, {
