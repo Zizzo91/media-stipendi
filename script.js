@@ -356,7 +356,7 @@ async function syncToGitHub() {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
 let sha = cachedFileSHA;
             try {
-                const shaResp = await fetch(apiUrl);
+                const shaResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });;
                 if (shaResp.ok) { const shaData = await shaResp.json(); if (shaData.sha) { sha = shaData.sha; cachedFileSHA = shaData.sha; } }
             } catch (e) { console.warn('SHA fetch error:', e); }
             if (!sha) { setSyncStatus('error', 'SHA non trovato'); showSyncToast('\u274c SHA non trovato'); return; }
