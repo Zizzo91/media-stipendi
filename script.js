@@ -356,7 +356,7 @@ async function syncToGitHub() {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
         let sha = null;
         try {
-            const getResp = await fetch(apiUrl, { headers: { 'Authorization': `token ${token}` } });
+            const getResp = await fetch(apiUrl, { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
             if (getResp.status === 200) { const d = await getResp.json(); sha = d.sha || null; }
         } catch (e) {}
 
