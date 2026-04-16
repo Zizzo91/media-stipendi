@@ -295,11 +295,12 @@ async function loadData() {
             const apiResp = await fetch(apiUrl, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3.raw'
+                    'Accept': 'application/vnd.github.v3+json'
                 }
             });
             if (apiResp.ok) {
-                state = await apiResp.json();
+                const meta = await apiResp.json(); cachedFileSHA = meta.sha || null; state = JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/
+/g,'')))));
                 migrateSalaries();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
                 console.log("✅ Dati caricati da GitHub API"); fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).then(m => { if (m && m.sha) cachedFileSHA = m.sha; });
