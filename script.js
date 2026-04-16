@@ -302,7 +302,7 @@ async function loadData() {
                 state = await apiResp.json();
                 migrateSalaries();
                 localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API");
+                console.log("✅ Dati caricati da GitHub API"); fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).then(m => { if (m && m.sha) cachedFileSHA = m.sha; });
                 loadedFromGitHub = true;
             }
         }
