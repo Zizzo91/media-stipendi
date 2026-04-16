@@ -357,8 +357,8 @@ async function syncToGitHub() {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
         let sha = cachedFileSHA;
         try {
-            const getResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
-            const d = await getResp.json().catch(()=>({})); console.log('GET sha status:', getResp.status, 'sha:', d.sha); if (getResp.status === 200 && d.sha) { sha = d.sha; }
+            const getResp = await fetch(apiUrl);
+            const d = await getResp.json().catch(()=>({})); if (getResp.ok && d.sha) { sha = d.sha; cachedFileSHA = d.sha; }
         } catch (e) {}
 
         const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
