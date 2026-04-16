@@ -292,7 +292,7 @@ async function loadData() {
     try {
         if (token) {
             const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
-            const apiResp = await fetch(apiUrl, {
+            const _ac = new AbortController(); setTimeout(() => _ac.abort(), 5000); const apiResp = await fetch(apiUrl, {signal: _ac.signal,
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/vnd.github.v3+json'
