@@ -357,7 +357,7 @@ async function syncToGitHub() {
         let sha = null;
         try {
             const getResp = await fetch(apiUrl, { headers: { 'Authorization': `token ${token}` } });
-            if (getResp.ok) sha = (await getResp.json()).sha;
+            if (getResp.status === 200) { const d = await getResp.json(); sha = d.sha || null; }
         } catch (e) {}
 
         const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
