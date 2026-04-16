@@ -357,7 +357,7 @@ async function syncToGitHub() {
         let sha = null;
         try {
             const getResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
-            if (getResp.status === 200) { const d = await getResp.json(); sha = d.sha || null; }
+            const d = await getResp.json().catch(()=>({})); console.log('GET sha status:', getResp.status, 'sha:', d.sha); if (getResp.status === 200 && d.sha) { sha = d.sha; }
         } catch (e) {}
 
         const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
