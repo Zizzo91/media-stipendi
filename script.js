@@ -39,7 +39,7 @@ let state = {
 
 let mChart = null;
 let cChart = null;
-let yChart = null;
+let yChart = null; let cachedFileSHA = null;
 
 // ========================================
 // AVVIO APP
@@ -354,7 +354,7 @@ async function syncToGitHub() {
 
     try {
         const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
-        let sha = null;
+        let sha = cachedFileSHA;
         try {
             const getResp = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' } });
             const d = await getResp.json().catch(()=>({})); console.log('GET sha status:', getResp.status, 'sha:', d.sha); if (getResp.status === 200 && d.sha) { sha = d.sha; }
@@ -373,7 +373,7 @@ async function syncToGitHub() {
 
         if (putResp.ok) {
             const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-            console.log("✅ Salvato su GitHub");
+            const putData = await putResp.clone().json().catch(()=>({})); if (putData.content?.sha) { cachedFileSHA = putData.content.sha; } console.log("✅ Salvato su GitHub");
             setSyncStatus('synced', timeStr);
             showSyncToast(`✅ Salvato su GitHub alle ${timeStr}`);
         } else {
