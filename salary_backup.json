@@ -1,7 +1,7 @@
 {
   "view": {
     "year": 2026,
-    "monthId": "03"
+    "monthId": "04"
   },
   "salaries": {
     "2015": {
@@ -622,6 +622,10 @@
       "03": {
         "amount": 2201,
         "note": "Pagata assistenza sanitaria"
+      },
+      "04": {
+        "amount": 6148,
+        "note": "Pagato premio digital + straordinario di mesi precedenti + 210€ rimborso welfare"
       }
     }
   },
