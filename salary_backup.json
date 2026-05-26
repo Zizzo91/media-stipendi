@@ -1,7 +1,7 @@
 {
   "view": {
     "year": 2026,
-    "monthId": "04"
+    "monthId": "05"
   },
   "salaries": {
     "2015": {
@@ -626,6 +626,10 @@
       "04": {
         "amount": 6148,
         "note": "Pagato premio digital + straordinario di mesi precedenti + 210€ rimborso welfare"
+      },
+      "05": {
+        "amount": 3598,
+        "note": "Rimborso asilo (1386€)"
       }
     }
   },
