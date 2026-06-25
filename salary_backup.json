@@ -1,7 +1,7 @@
 {
   "view": {
     "year": 2026,
-    "monthId": "05"
+    "monthId": "06"
   },
   "salaries": {
     "2015": {
@@ -630,6 +630,10 @@
       "05": {
         "amount": 3598,
         "note": "Rimborso asilo (1386€)"
+      },
+      "06": {
+        "amount": 2116,
+        "note": "Insieme a 14°, 73€ di rimborso da welfare"
       }
     }
   },
