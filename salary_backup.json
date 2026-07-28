@@ -1,7 +1,7 @@
 {
   "view": {
     "year": 2026,
-    "monthId": "14"
+    "monthId": "07"
   },
   "salaries": {
     "2015": {
@@ -638,6 +638,10 @@
       "06": {
         "amount": 2116,
         "note": "Insieme a 14°, 73€ di rimborso da welfare"
+      },
+      "07": {
+        "amount": 4425,
+        "note": "Rimborso asilo, rimborso spese anticipate di trasferta, trasferta, Rimborso 730"
       }
     }
   },
