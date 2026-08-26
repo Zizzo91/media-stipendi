@@ -1,7 +1,7 @@
 {
   "view": {
     "year": 2026,
-    "monthId": "07"
+    "monthId": "08"
   },
   "salaries": {
     "2015": {
@@ -642,6 +642,10 @@
       "07": {
         "amount": 4425,
         "note": "Rimborso asilo, rimborso spese anticipate di trasferta, trasferta, Rimborso 730"
+      },
+      "08": {
+        "amount": 2617,
+        "note": "Rimborso 320€ asilo"
       }
     }
   },
