@@ -121,3 +121,16 @@ tbody tr:hover { background: var(--primary-light); }
     .chart-card { height: 350px; }
     .navbar { padding: 1rem; }
 }
+
+/* Login screen (PIN 6 cifre) */
+.login-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg-gradient); background-color: var(--bg); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.login-screen.hidden { display: none; }
+.login-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 2rem; width: 100%; max-width: 320px; text-align: center; }
+.pin-dots { display: flex; justify-content: center; gap: 10px; margin-bottom: .75rem; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: transparent; transition: background .2s, border-color .2s; }
+.pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+.login-error { color: var(--danger); font-size: .85rem; font-weight: 700; min-height: 1.4em; margin-bottom: .75rem; }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pin-btn { padding: .9rem; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 1.15rem; font-weight: 700; cursor: pointer; transition: .15s; }
+.pin-btn:hover { background: var(--primary-light); border-color: var(--primary); }
+.pin-btn:active { transform: scale(.96); }

@@ -7,12 +7,173 @@ const CONFIG = {
     storageKey: 'salary_data_v2'
 };
 
-const GH_CONFIG = {
-    user: "Zizzo91",
-    repo: "media-stipendi",
-    file: "salary_backup.json",
-    branch: "main"
-};
+// ========================================
+// SUPABASE (cloud) — sincronizzazione
+// ========================================
+let supabaseConfig = window && window.SUPABASE_CONFIG ? window.SUPABASE_CONFIG : null;
+let supabaseSdk = null;
+
+function getSupabaseSdk() {
+    if (supabaseSdk) return supabaseSdk;
+    if (!supabaseConfig || !window.supabase || !window.supabase.createClient) return null;
+    supabaseSdk = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+        auth: { persistSession: true, autoRefreshToken: true, flowType: "pkce" }
+    });
+    return supabaseSdk;
+}
+
+// ========================================
+// LOGIN PIN 6 CIFRE (il PIN è la password dell'account Supabase)
+// ========================================
+const PIN_LEN = 6;
+let pinBuffer = '';
+
+function injectLoginScreen() {
+    if (document.getElementById('loginScreen')) return;
+    let dots = '';
+    for (let i = 0; i < PIN_LEN; i++) dots += `<div class="pin-dot" id="ldot${i}"></div>`;
+    const keys = ['1','2','3','4','5','6','7','8','9','✕','0','⌫'];
+    const padHTML = keys.map(k => {
+        if (k === '✕') return `<button type="button" class="pin-btn" onclick="pinPadClear()">✕</button>`;
+        if (k === '⌫') return `<button type="button" class="pin-btn" onclick="pinPadBackspace()">⌫</button>`;
+        return `<button type="button" class="pin-btn" onclick="pinPad('${k}')">${k}</button>`;
+    }).join('');
+    const ls = document.createElement('div');
+    ls.id = 'loginScreen';
+    ls.className = 'login-screen';
+    ls.innerHTML = `
+        <div class="login-card">
+            <div style="font-size:2.5rem;margin-bottom:.5rem;">🔒</div>
+            <h2 id="loginTitle" style="font-size:1.3rem;font-weight:800;color:var(--text);margin-bottom:.25rem;">Accesso protetto</h2>
+            <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1.25rem;">Inserisci il PIN a 6 cifre</p>
+            <div id="loginDots" class="pin-dots">${dots}</div>
+            <div id="loginError" class="login-error"></div>
+            <div class="pin-pad">${padHTML}</div>
+        </div>`;
+    document.body.appendChild(ls);
+}
+
+function showLoginScreen() {
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.classList.remove('hidden');
+    const lo = document.getElementById('logoutBtn');
+    if (lo) lo.style.display = 'none';
+}
+function hideLoginScreen() {
+    const ls = document.getElementById('loginScreen');
+    if (ls) ls.classList.add('hidden');
+    const lo = document.getElementById('logoutBtn');
+    if (lo) lo.style.display = 'inline-block';
+}
+
+function pinPad(d) {
+    if (pinBuffer.length >= PIN_LEN) return;
+    pinBuffer += d;
+    updateLoginDots();
+    if (pinBuffer.length === PIN_LEN) setTimeout(() => doPinLogin(), 180);
+}
+function pinPadBackspace() { pinBuffer = pinBuffer.slice(0, -1); updateLoginDots(); hideLoginError(); }
+function pinPadClear()      { pinBuffer = ''; updateLoginDots(); hideLoginError(); }
+function updateLoginDots() {
+    for (let i = 0; i < PIN_LEN; i++) {
+        const el = document.getElementById('ldot' + i);
+        if (el) el.classList.toggle('filled', i < pinBuffer.length);
+    }
+}
+function showLoginError(msg) { const el = document.getElementById('loginError'); if (el) el.textContent = msg; }
+function hideLoginError()    { const el = document.getElementById('loginError'); if (el) el.textContent = ''; }
+
+async function doPinLogin() {
+    const sdk = getSupabaseSdk();
+    const email = (supabaseConfig && supabaseConfig.pinEmail || '').trim().toLowerCase();
+    if (!email) { showLoginError('Config mancante (pinEmail).'); return; }
+    if (!sdk)   { showLoginError('SDK non disponibile.'); return; }
+    const password = pinBuffer; pinBuffer = ''; updateLoginDots();
+    const title = document.getElementById('loginTitle');
+    if (title) title.textContent = 'Verifica...';
+    hideLoginError();
+    try {
+        let { data, error } = await sdk.auth.signInWithPassword({ email, password });
+        if (error && /invalid login credentials/i.test(error.message || '')) {
+            const su = await sdk.auth.signUp({ email, password });
+            if (su.error) {
+                if (title) title.textContent = 'Accesso protetto';
+                const m = (su.error.message || '').toLowerCase();
+                if (/rate limit|troppi tentativi|email.*limit/i.test(m)) {
+                    showLoginError('Limite momentaneo di Supabase: riprova tra circa un\'ora con lo stesso PIN.');
+                    return;
+                }
+                if (/weak_password|8 character|too short|almeno 8/i.test(m)) {
+                    showLoginError('Supabase richiede una password più lunga: imposta \'Minimum password length\' a 6 nel pannello Auth.');
+                    return;
+                }
+                if (/already registered/i.test(m)) showLoginError('PIN errato.');
+                else showLoginError(su.error.message || 'Errore');
+                return;
+            }
+            if (!su.data || !su.data.session) {
+                if (title) title.textContent = 'Accesso protetto';
+                showLoginError('Account creato: verifica l\'email di conferma, poi riprova con lo stesso PIN.');
+                return;
+            }
+            data = su.data;
+        }
+        if (error) { if (title) title.textContent = 'Accesso protetto'; showLoginError(error.message || 'Errore'); return; }
+        hideLoginScreen();
+        await startApp();
+    } catch (e) {
+        if (title) title.textContent = 'Accesso protetto';
+        showLoginError(e && e.message ? e.message : 'Errore');
+    }
+}
+
+async function logout() {
+    const sdk = getSupabaseSdk();
+    try { if (sdk) await sdk.auth.signOut(); } catch (e) {}
+    window.location.reload();
+}
+
+// ========================================
+// AVVIO APP
+// ========================================
+document.addEventListener('DOMContentLoaded', async () => {
+    if ('serviceWorker' in navigator)
+        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+
+    injectLoginScreen();
+    getSupabaseSdk();
+    await checkInitialAuth();
+    initYearSelectors();
+    setInitialDate();
+    enhanceUI();
+    setupEventListeners();
+    setupCurrencyFormatter();
+    await loadData();
+    updateUI(true);
+});
+
+async function checkInitialAuth() {
+    const sdk = getSupabaseSdk();
+    if (!sdk) { showLoginScreen(); return false; }
+    try {
+        const { data } = await sdk.auth.getSession();
+        if (data.session) { hideLoginScreen(); setSyncStatus('ready'); return true; }
+    } catch (e) {}
+    showLoginScreen();
+    setSyncStatus('local');
+    return false;
+}
+
+// Avvio completo dopo login (carica cloud e aggiorna tutto)
+async function startApp() {
+    await loadData();
+    initYearSelectors();
+    setInitialDate();
+    enhanceUI();
+    setupEventListeners();
+    setupCurrencyFormatter();
+    updateUI(true);
+}
 
 const MENSILITA = [
     { id: '01', name: 'Gen', full: 'Gennaio' },
@@ -40,38 +201,6 @@ let state = {
 let mChart = null;
 let cChart = null;
 let yChart = null; let cachedFileSHA = null;
-
-// ========================================
-// AVVIO APP
-// ========================================
-document.addEventListener('DOMContentLoaded', async () => {
-    checkMagicLink();
-    await loadData();
-    initYearSelectors();
-    setInitialDate();
-    enhanceUI();
-    setupEventListeners();
-    setupCurrencyFormatter();
-    updateUI(true);
-});
-
-// ========================================
-// GESTIONE TOKEN
-// ========================================
-function checkMagicLink() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const magicToken = urlParams.get('token');
-    if (magicToken) {
-        localStorage.setItem("gh_token", magicToken);
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({path: newUrl}, '', newUrl);
-        showToast("✅ Dispositivo abilitato!");
-    }
-}
-
-function getHasToken() {
-    return !!localStorage.getItem("gh_token");
-}
 
 // ========================================
 // MIGRAZIONE DATI (numeri puri -> {amount, note})
@@ -104,7 +233,21 @@ function enhanceUI() {
     injectNoteAndDeleteControls();
     injectTableVariationColumn();
     injectKpiIcons();
-    setSyncStatus(getHasToken() ? 'ready' : 'local');
+    injectLogoutButton();
+    setSyncStatus('local');
+}
+
+function injectLogoutButton() {
+    const container = document.querySelector('.navbar .year-selector-container');
+    if (!container || document.getElementById('logoutBtn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'logoutBtn';
+    btn.className = 'icon-btn';
+    btn.title = 'Esci';
+    btn.innerHTML = '🚪';
+    btn.style.display = 'none';
+    btn.onclick = logout;
+    container.appendChild(btn);
 }
 
 function injectEnhancementStyles() {
@@ -159,7 +302,7 @@ function injectSyncBadge() {
     const badge = document.createElement('div');
     badge.id = 'syncBadge';
     badge.className = 'sync-badge sync-local';
-    badge.title = 'Stato sincronizzazione GitHub';
+    badge.title = 'Stato sincronizzazione Supabase';
     const dot = document.createElement('span');
     dot.className = 'sync-dot';
     dot.id = 'syncDot';
@@ -283,47 +426,46 @@ function isSmallScreen() {
 }
 
 // ========================================
-// CARICAMENTO DATI
+// CARICAMENTO DATI (cloud Supabase -> fallback locale)
 // ========================================
 async function loadData() {
-    let loadedFromGitHub = false;
-    const token = localStorage.getItem("gh_token");
+    const sdk = getSupabaseSdk();
+    let loadedFromCloud = false;
 
-    try {
-        if (token) {
-            const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
-            const _ac = new AbortController(); setTimeout(() => _ac.abort(), 5000); const apiResp = await fetch(apiUrl, {signal: _ac.signal,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
+    if (sdk) {
+        try {
+            const { data: sData } = await sdk.auth.getSession();
+            if (sData.session) {
+                const { data: sessionUser } = await sdk.auth.getUser();
+                if (sessionUser && sessionUser.user) {
+                    const { data, error } = await sdk
+                        .schema('media_stipendi')
+                        .from('state')
+                        .select('salaries,view,theme,last_update')
+                        .eq('user_id', sessionUser.user.id)
+                        .maybeSingle();
+                    if (!error && data) {
+                        if (data.salaries && typeof data.salaries === 'object') state.salaries = data.salaries;
+                        if (data.view && typeof data.view === 'object') state.view = data.view;
+                        if (typeof data.theme === 'string') state.theme = data.theme;
+                        migrateSalaries();
+                        localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
+                        if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
+                        else document.body.removeAttribute('data-theme');
+                        const d = data.last_update ? new Date(data.last_update) : null;
+                        const timeStr = d ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+                        setSyncStatus('synced', timeStr);
+                        console.log("✅ Dati caricati da Supabase");
+                        loadedFromCloud = true;
+                    }
                 }
-            });
-            if (apiResp.ok) {
-                const meta = await apiResp.json(); cachedFileSHA = meta.sha || null; state = JSON.parse(decodeURIComponent(escape(atob(meta.content.replace(/\s/g,'')))));
-                migrateSalaries();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub API"); fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).then(m => { if (m && m.sha) cachedFileSHA = m.sha; });
-                loadedFromGitHub = true;
             }
+        } catch (e) {
+            console.warn("Supabase offline o errore rete, uso dati locali:", e);
         }
-
-        if (!loadedFromGitHub) {
-            const cacheBuster = "?t=" + new Date().getTime();
-            const url = `https://raw.githubusercontent.com/${GH_CONFIG.user}/${GH_CONFIG.repo}/${GH_CONFIG.branch}/${GH_CONFIG.file}${cacheBuster}`;
-            const response = await fetch(url);
-            if (response.ok) {
-                state = await response.json();
-                migrateSalaries();
-                localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-                console.log("✅ Dati caricati da GitHub Raw");
-                loadedFromGitHub = true;
-            }
-        }
-    } catch (e) {
-        console.warn("GitHub offline o errore rete, uso dati locali:", e);
     }
 
-    if (!loadedFromGitHub) {
+    if (!loadedFromCloud) {
         const saved = localStorage.getItem(CONFIG.storageKey);
         if (saved) {
             try {
@@ -331,6 +473,7 @@ async function loadData() {
                 migrateSalaries();
             } catch (e) {}
         }
+        if (!sdk || !(await isSessionValid())) setSyncStatus('local');
     }
 
     if (!state.view) state.view = { year: 2026, monthId: '01' };
@@ -338,53 +481,61 @@ async function loadData() {
     if (state.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
 }
 
+async function isSessionValid() {
+    const sdk = getSupabaseSdk();
+    if (!sdk) return false;
+    try {
+        const { data } = await sdk.auth.getSession();
+        return !!(data.session);
+    } catch (e) { return false; }
+}
+
 // ========================================
-// SALVATAGGIO DATI
+// SALVATAGGIO DATI (locale + cloud Supabase)
 // ========================================
 function saveData() {
     localStorage.setItem(CONFIG.storageKey, JSON.stringify(state));
-    syncToGitHub();
+    syncToCloud();
 }
 
-async function syncToGitHub() {
-    const token = localStorage.getItem("gh_token");
-    if (!token) { setSyncStatus('local'); return; }
+async function syncToCloud() {
+    const sdk = getSupabaseSdk();
+    if (!sdk) { setSyncStatus('local'); return; }
+    const { data: sessionData } = await sdk.auth.getSession();
+    if (!sessionData.session) { setSyncStatus('local'); return; }
 
     setSyncStatus('syncing');
 
     try {
-        const apiUrl = `https://api.github.com/repos/${GH_CONFIG.user}/${GH_CONFIG.repo}/contents/${GH_CONFIG.file}`;
-let sha = cachedFileSHA;
-            try {
-                const r1 = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (r1.ok) { const d = await r1.json(); if (d.sha) { sha = d.sha; cachedFileSHA = d.sha; } }
-                if (!sha) { const r2 = await fetch(apiUrl); if (r2.ok) { const d2 = await r2.json(); if (d2.sha) { sha = d2.sha; cachedFileSHA = d2.sha; } } }
-            } catch (e) { console.warn('SHA fetch error:', e); }
-            if (!sha) { setSyncStatus('error', 'SHA non trovato'); showSyncToast('\u274c SHA non trovato'); return; }
+        const { data: { user } } = await sdk.auth.getUser();
+        if (!user) { setSyncStatus('local'); return; }
+        const row = {
+            user_id: user.id,
+            salaries: state.salaries || {},
+            view: state.view || { year: 2026, monthId: '01' },
+            theme: state.theme || 'light',
+            last_update: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await sdk
+            .schema('media_stipendi')
+            .from('state')
+            .upsert(row, { onConflict: 'user_id' });
 
-        const contentBase64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
-        const putResp = await fetch(apiUrl, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: "Update " + new Date().toISOString().slice(0, 10),
-                content: contentBase64,
-                sha: sha || undefined
-            })
-        });
-
-        if (putResp.ok) {
-            const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-            const putData = await putResp.clone().json().catch(()=>({})); if (putData.content?.sha) { cachedFileSHA = putData.content.sha; } console.log("✅ Salvato su GitHub");
-            setSyncStatus('synced', timeStr);
-            showSyncToast(`✅ Salvato su GitHub alle ${timeStr}`);
-        } else {
-            const errBody = await putResp.json().catch(() => ({}));
-            const msg = errBody.message || putResp.status;
-            console.error("Errore Sync HTTP:", msg);
-            setSyncStatus('error', msg);
-            showSyncToast(`❌ Sync fallito: ${msg}`);
+        if (error) {
+            if (/rate limit|troppi tentativi/i.test(error.message || '')) {
+                setSyncStatus('error', 'rate limit');
+                showSyncToast('⚠️ Limite momentaneo Supabase: riprova tra circa un\'ora.');
+                return;
+            }
+            console.error("Errore Sync:", error.message);
+            setSyncStatus('error', error.message);
+            showSyncToast(`❌ Sync fallito: ${error.message}`);
+            return;
         }
+        const timeStr = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        setSyncStatus('synced', timeStr);
+        showSyncToast(`✅ Salvato su cloud alle ${timeStr}`);
     } catch (error) {
         console.error("Errore Sync:", error);
         setSyncStatus('error');
@@ -405,11 +556,12 @@ function setInitialDate() {
 
 function initYearSelectors() {
     const picker = document.getElementById('yearPicker');
+    if (!picker) return;
     picker.innerHTML = '';
     const cmp1 = document.getElementById('cmpYear1');
     const cmp2 = document.getElementById('cmpYear2');
-    cmp1.innerHTML = '';
-    cmp2.innerHTML = '';
+    if (cmp1) cmp1.innerHTML = '';
+    if (cmp2) cmp2.innerHTML = '';
 
     for (let y = CONFIG.startYear; y <= CONFIG.endYear; y++) {
         const opt = document.createElement('option');
@@ -417,13 +569,16 @@ function initYearSelectors() {
         opt.textContent = y + (y === new Date().getFullYear() ? ' (Corrente)' : '');
         picker.appendChild(opt);
 
-        const opt1 = opt.cloneNode(true);
-        opt1.textContent = y;
-        cmp1.appendChild(opt1);
-
-        const opt2 = opt.cloneNode(true);
-        opt2.textContent = y;
-        cmp2.appendChild(opt2);
+        if (cmp1) {
+            const opt1 = opt.cloneNode(true);
+            opt1.textContent = y;
+            cmp1.appendChild(opt1);
+        }
+        if (cmp2) {
+            const opt2 = opt.cloneNode(true);
+            opt2.textContent = y;
+            cmp2.appendChild(opt2);
+        }
     }
 }
 
@@ -484,7 +639,7 @@ function updateYtdBadge() {
     } else {
         badge.innerHTML = `${icon} ${sign}${Math.abs(pct).toFixed(1)}% (${diffFormatted}) vs MAX (${bestPastYear})`;
     }
-    badge.title = `Totale attuale (stessi mesi): \u20ac ${currTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}\nMax storico nello stesso periodo (${bestPastYear}): \u20ac ${bestPastTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}`;
+    badge.title = `Totale attuale (stessi mesi): € ${currTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}\nMax storico nello stesso periodo (${bestPastYear}): € ${bestPastTotal.toLocaleString('it-IT', {minimumFractionDigits:2})}`;
     badge.style.display = 'inline-flex';
 }
 
@@ -494,6 +649,7 @@ function updateYtdBadge() {
 function setupCurrencyFormatter() {
     const displayInput = document.getElementById('salaryDisplay');
     const hiddenInput = document.getElementById('salaryInput');
+    if (!displayInput || !hiddenInput) return;
 
     displayInput.addEventListener('input', function(e) {
         let value = e.target.value.replace(/[^0-9.,]/g, '');
@@ -586,7 +742,7 @@ function renderKPIs() {
 
     document.getElementById('kpiTotal').textContent = total.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
     document.getElementById('kpiAvg').textContent = avg.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-    document.getElementById('kpiMax').textContent = values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '\u20ac 0,00';
+    document.getElementById('kpiMax').textContent = values.length ? Math.max(...values).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }) : '€ 0,00';
     const kpiForecastEl = document.getElementById('kpiForecast');
     if (kpiForecastEl) {
         kpiForecastEl.textContent = values.length > 0
@@ -664,8 +820,8 @@ function updateCharts() {
     const minBarWidth = 50;
     const scrollContainer = document.querySelector('.chart-wrapper-scrollable');
     const innerContainer = document.querySelector('.chart-scroll-inner');
-    const totalWidth = Math.max(years.length * minBarWidth, scrollContainer.clientWidth);
-    innerContainer.style.width = `${totalWidth}px`;
+    const totalWidth = Math.max(years.length * minBarWidth, scrollContainer ? scrollContainer.clientWidth : 800);
+    if (innerContainer) innerContainer.style.width = `${totalWidth}px`;
     if (yChart) yChart.destroy();
     yChart = new Chart(ctxY, {
         type: 'bar',
@@ -727,7 +883,7 @@ function updateCharts() {
                 interaction: { mode: 'index', intersect: false },
                 scales: {
                     x: { ticks: { font: { size: 10 }, autoSkip: false, maxRotation: 0 } },
-                    y: { beginAtZero: true, ticks: { callback: v => v >= 1000 ? '\u20ac ' + v/1000 + 'k' : '\u20ac ' + v } }
+                    y: { beginAtZero: true, ticks: { callback: v => v >= 1000 ? '€ ' + v/1000 + 'k' : '€ ' + v } }
                 },
                 plugins: {
                     tooltip: {

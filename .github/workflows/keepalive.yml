@@ -1,0 +1,23 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: "0 12 * * 1,4"
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping progetto Supabase (anti-pausa free tier)
+        run: |
+          if [ -z "${{ vars.SUPABASE_URL }}" ] || [ -z "${{ vars.SUPABASE_ANON_KEY }}" ]; then
+            echo "::warning title=Keepalive disattivato::Imposta SUPABASE_URL e SUPABASE_ANON_KEY nelle Actions variables del repo."
+            exit 0
+          fi
+          echo "Ping schema public (gestione-conti):"
+          curl -sS -o /dev/null -w "  keepalive HTTP %{http_code} (public/entries)\n" "${{ vars.SUPABASE_URL }}/rest/v1/entries?select=month&limit=1" -H "apikey: ${{ vars.SUPABASE_ANON_KEY }}"
+          echo "Ping schema investimenti:"
+          curl -sS -o /dev/null -w "  keepalive HTTP %{http_code} (investimenti/state)\n" "${{ vars.SUPABASE_URL }}/rest/v1/state?select=user_id&limit=1" -H "apikey: ${{ vars.SUPABASE_ANON_KEY }}" -H "Accept-Profile: investimenti"
+          echo "Ping schema media_stipendi:"
+          curl -sS -o /dev/null -w "  keepalive HTTP %{http_code} (media_stipendi/state)\n" "${{ vars.SUPABASE_URL }}/rest/v1/state?select=user_id&limit=1" -H "apikey: ${{ vars.SUPABASE_ANON_KEY }}" -H "Accept-Profile: media_stipendi"

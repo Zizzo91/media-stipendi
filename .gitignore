@@ -1,0 +1,9 @@
+# Config Supabase: il file config/supabase-config.js È committato (serve a GitHub Pages,
+# contiene solo dati pubblici: URL, anon key, email di login del PIN). Mai service_role/db_password.
+.DS_Store
+
+# Dati stipendi personali: solo locale / config Utility, mai nel repo
+salary_backup.json
+backup-*.json
+gh_token
+*.local.json
