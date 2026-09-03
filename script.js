@@ -17,7 +17,7 @@ function getSupabaseSdk() {
     if (supabaseSdk) return supabaseSdk;
     if (!supabaseConfig || !window.supabase || !window.supabase.createClient) return null;
     supabaseSdk = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey, {
-        auth: { persistSession: true, autoRefreshToken: true, flowType: "pkce" }
+        auth: { persistSession: false, autoRefreshToken: true, flowType: "pkce" }
     });
     return supabaseSdk;
 }
@@ -148,8 +148,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     enhanceUI();
     setupEventListeners();
     setupCurrencyFormatter();
-    await loadData();
-    updateUI(true);
+});
+
+// ─── Tastiera fisica durante il login PIN (opzionale: aggiuntiva al tastierino/touch) ───
+document.addEventListener('keydown', function(e){
+  const ls = document.getElementById('loginScreen');
+  if (!ls || ls.classList.contains('hidden')) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (e.repeat) return; // ignora la ripetizione di un tasto tenuto premuto
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pinPad(e.key); }
+  else if (e.key === 'Backspace') { e.preventDefault(); pinPadBackspace(); }
+  else if (e.key === 'Escape') { e.preventDefault(); pinPadClear(); }
+  else if (e.key === 'Enter' && pinBuffer.length > 0) { e.preventDefault(); doPinLogin(); }
 });
 
 async function checkInitialAuth() {
