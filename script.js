@@ -450,8 +450,7 @@ async function loadData() {
                 const { data: sessionUser } = await sdk.auth.getUser();
                 if (sessionUser && sessionUser.user) {
                     const { data, error } = await sdk
-                        .schema('media_stipendi')
-                        .from('state')
+                        .from('media_stipendi_state')
                         .select('salaries,view,theme,last_update')
                         .eq('user_id', sessionUser.user.id)
                         .maybeSingle();
@@ -529,8 +528,7 @@ async function syncToCloud() {
             updated_at: new Date().toISOString()
         };
         const { error } = await sdk
-            .schema('media_stipendi')
-            .from('state')
+            .from('media_stipendi_state')
             .upsert(row, { onConflict: 'user_id' });
 
         if (error) {
