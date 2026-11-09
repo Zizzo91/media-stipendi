@@ -2,127 +2,175 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Stipendi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>MySalary — Gestione Stipendi</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💼</text></svg>">
-    <meta name="theme-color" content="#4361ee">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23fdd30f'/><text x='50' y='70' font-size='56' text-anchor='middle' font-family='Helvetica' font-weight='bold' fill='%23000'>%E2%82%AC</text></svg>">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MySalary">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=19">
+    <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 
 <div class="navbar">
-    <div class="logo">
-        <i class="fa-solid fa-wallet"></i> MySalary
-    </div>
+    <a class="logo" href="./" aria-label="MySalary">
+        <span class="logo-mark" aria-hidden="true">€</span>
+        <span>MySalary</span>
+    </a>
+
     <div class="year-selector-container">
-        <button id="prevYear" class="icon-btn"><i class="fa-solid fa-chevron-left"></i></button>
-        <select id="yearPicker"></select>
-        <button id="nextYear" class="icon-btn"><i class="fa-solid fa-chevron-right"></i></button>
-        <button id="themeToggle" class="icon-btn" style="margin-left:10px">
+        <button id="prevYear" class="icon-btn" aria-label="Anno precedente"><i class="fa-solid fa-chevron-left"></i></button>
+        <select id="yearPicker" aria-label="Seleziona anno"></select>
+        <button id="nextYear" class="icon-btn" aria-label="Anno successivo"><i class="fa-solid fa-chevron-right"></i></button>
+
+        <button id="themeToggle" class="icon-btn" aria-label="Cambia tema">
             <i class="fa-solid fa-moon"></i>
         </button>
-        <button id="exportBtn" class="icon-btn" title="Esporta Backup">
+
+        <button id="exportBtn" class="icon-btn" title="Esporta backup" aria-label="Esporta backup">
             <i class="fa-solid fa-download"></i>
         </button>
-        <label for="importFile" class="icon-btn" title="Importa Backup" style="cursor:pointer;display:inline-block">
+
+        <label for="importFile" class="icon-btn" title="Importa backup" aria-label="Importa backup">
             <i class="fa-solid fa-upload"></i>
         </label>
-        <input type="file" id="importFile" accept=".json" style="display:none">
+        <input type="file" id="importFile" accept=".json" hidden>
     </div>
 </div>
 
-<div class="container">
+<header class="hero">
+    <span class="hero-euro" aria-hidden="true">€</span>
+    <div class="hero-inner">
+        <p class="eyebrow">Gestione stipendi · Cloud privato</p>
+        <h1>Il tuo stipendio,<br><span class="text-gradient">anno per anno.</span></h1>
+        <p class="hero-sub">Entrate, confronti e proiezioni in un unico posto. Sincronizzato e sempre con te.</p>
+    </div>
+</header>
 
-    <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:10px">
-            <h3 style="margin:0">Seleziona Mese</h3>
+<main class="container">
+
+    <!-- Sezione Mesi -->
+    <section class="card">
+        <div class="card-head">
+            <h3>Seleziona Mese</h3>
             <div id="ytdBadge" class="ytd-badge" style="display:none" title="Confronto con l'anno migliore per gli stessi mesi"></div>
         </div>
         <div class="month-grid" id="monthGrid"></div>
-    </div>
+    </section>
 
-    <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+    <!-- Input e Navigazione -->
+    <section class="card">
+        <div class="month-nav">
             <button id="btnPrevMonth" class="icon-btn"><i class="fa-solid fa-arrow-left"></i> Prec</button>
-            <h2 id="formTitle" style="margin:0">-</h2>
+            <h2 id="formTitle">-</h2>
             <button id="btnNextMonth" class="icon-btn">Succ <i class="fa-solid fa-arrow-right"></i></button>
         </div>
+
         <div class="input-section">
             <div class="input-container">
-                <span style="font-size:1.5rem;margin-right:10px;color:var(--text-muted)">€</span>
-                <input type="text" inputmode="decimal" id="salaryDisplay" placeholder="0,00">
+                <span class="currency">€</span>
+                <input type="text" inputmode="decimal" id="salaryDisplay" placeholder="0,00" size="4" aria-label="Importo stipendio">
                 <input type="hidden" id="salaryInput">
             </div>
+
             <div class="form-actions">
                 <button id="btnSave" class="btn btn-primary">
-                    <i class="fa-solid fa-floppy-disk"></i> Salva Stipendio
+                    <i class="fa-solid fa-check"></i> Salva stipendio
                 </button>
             </div>
         </div>
-    </div>
+    </section>
 
+    <!-- KPI Cards -->
     <div class="kpi-grid">
-        <div class="kpi-card"><small>Totale Annuo</small><div id="kpiTotal">-</div></div>
-        <div class="kpi-card"><small>Media Mensile</small><div id="kpiAvg">-</div></div>
-        <div class="kpi-card"><small>Picco Massimo</small><div id="kpiMax">-</div></div>
-        <div class="kpi-card" title="Proiezione a fine anno basata sulla media attuale">
-            <small>Proiez. Annua</small><div id="kpiForecast">-</div>
+        <div class="kpi-card kpi-card--feature">
+            <small>Totale Annuo</small>
+            <div id="kpiTotal">-</div>
         </div>
-        <div class="kpi-card"><small>Mesi Inseriti</small><div id="kpiCount">-</div></div>
+        <div class="kpi-card">
+            <small>Media Mensile</small>
+            <div id="kpiAvg">-</div>
+        </div>
+        <div class="kpi-card">
+            <small>Picco Massimo</small>
+            <div id="kpiMax">-</div>
+        </div>
+        <div class="kpi-card" title="Proiezione a fine anno basata sulla media attuale">
+            <small>Proiez. Annua</small>
+            <div id="kpiForecast">-</div>
+        </div>
+        <div class="kpi-card">
+            <small>Mesi Inseriti</small>
+            <div id="kpiCount">-</div>
+        </div>
     </div>
 
+    <!-- Grafici -->
     <div class="charts-container">
-        <div class="card chart-card">
-            <h3>Andamento Mensile</h3>
-            <div class="chart-wrapper"><canvas id="monthlyChart"></canvas></div>
-        </div>
-        <div class="card chart-card">
-            <h3>Confronto Storico Totale</h3>
-            <div class="chart-wrapper-scrollable">
-                <div class="chart-scroll-inner"><canvas id="yearlyChart"></canvas></div>
+
+        <section class="card chart-card">
+            <h3>Andamento mensile</h3>
+            <div class="chart-wrapper">
+                <canvas id="monthlyChart"></canvas>
             </div>
-        </div>
-        <div class="card chart-card">
-            <div class="card-header-flex">
-                <h3 style="margin:0">Confronto Diretto</h3>
-                <div class="compare-controls">
-                    <select id="cmpYear1"></select>
-                    <span style="font-size:.9rem;color:var(--text-muted)">vs</span>
-                    <select id="cmpYear2"></select>
+        </section>
+
+        <section class="card chart-card">
+            <h3>Confronto storico totale</h3>
+            <div class="chart-wrapper-scrollable">
+                <div class="chart-scroll-inner">
+                    <canvas id="yearlyChart"></canvas>
                 </div>
             </div>
-            <div class="chart-wrapper"><canvas id="comparisonChart"></canvas></div>
-        </div>
+        </section>
+
+        <section class="card chart-card">
+            <div class="card-header-flex">
+                <h3>Confronto diretto</h3>
+                <div class="compare-controls">
+                    <select id="cmpYear1" aria-label="Primo anno"></select>
+                    <span class="vs">vs</span>
+                    <select id="cmpYear2" aria-label="Secondo anno"></select>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </section>
     </div>
 
-    <div class="card">
-        <h3>Dettaglio Annuale</h3>
+    <!-- Tabella Riepilogo -->
+    <section class="card">
+        <h3>Dettaglio annuale</h3>
         <div class="table-wrapper">
             <table id="salaryTable">
                 <thead>
                     <tr>
-                        <th width="40%">Mese</th>
-                        <th width="40%">Importo</th>
+                        <th width="34%">Mese</th>
+                        <th width="34%">Importo</th>
                         <th width="20%">Stato</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
-    </div>
+    </section>
 
-</div>
+</main>
+
+<footer class="footer">
+    <i class="fa-solid fa-lock"></i>
+    MySalary · Dati protetti con PIN e sincronizzazione privata
+</footer>
 
 <div id="toast" class="toast">Messaggio</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config/supabase-config.js"></script>
-<script src="script.js?v=19"></script>
+<script src="script.js?v=21"></script>
 </body>
 </html>

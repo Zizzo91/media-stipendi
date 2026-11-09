@@ -37,3 +37,10 @@ media-stipendi/
 ## Note operative
 - Keepalive generico: le Actions variables del repo `SUPABASE_URL` e `SUPABASE_ANON_KEY` vanno impostate su GitHub (Settings → Secrets and variables → Actions → Variables), altrimenti il workflow si salta con un warning.
 - **Segreti**: `config/supabase-config.js` è committato perché serve a GitHub Pages, ma contiene SOLO dati pubblici (url, anon key, `pinEmail` = email di login). `service_role` e `db_password` stanno SOLO in `Config Utility/` — mai nel repo/progetto pubblico. I dati stipendi (`salary_backup.json`) non devono MAI essere committati.
+
+## Design UI (Apple-inspired)
+- Token derivati da `../reverse-brand/out/www.apple.com/tokens.css` (misurati da apple.com): card 28px, bottoni pill 980px, nav glass 52px, stack SF Pro di sistema, blu azione `#0071e3`, raggi 14/20/28px.
+- `style.css` è la fonte unica dei token: `:root` e `[data-theme="dark"]` definiscono superfici, testi, `--chart-*`, `--watermark`, `--navbar-*`.
+- Sfondo "stipendi": mesh gradient sul body + filigrana `€` fissa (`body::before`) + hero scuro con moneta/glow (`.hero`, `.hero-euro`, `.text-gradient`).
+- Grafici Chart.js in `updateCharts()`: font SF, tooltip scuro arrotondato (`appleTooltip`), area con gradiente, barre arrotondate, griglie leggere. L'asse Y del mensile è "zoommato" sui valori; lo storico parte dal primo anno con dati; il confronto non mostra i delta sulle etichette (restano nei tooltip).
+- Non hardcodare colori nei grafici: usare `cssVar('--...')` così il dark mode resta coerente.
